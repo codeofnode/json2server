@@ -1,0 +1,32 @@
+{
+  "name": "json2server",
+  "version": "0.0.6",
+  "description": "Provide a json to ready a server. It has routes, validations and more.",
+  "keywords": [
+    "server",
+    "json",
+    "routes"
+  ],
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "bin": {
+    "json2server": "_index.js"
+  },
+  "bugs": {
+    "url": "https://github.com/codeofnode/json2server/issues"
+  },
+  "homepage": "https://github.com/codeofnode/json2server",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/codeofnode/json2server.git"
+  },
+  "author": "codeofnode@gmail.com",
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "https://github.com/codeofnode/json2server/blob/master/LICENSE"
+    }
+  ]
+}
