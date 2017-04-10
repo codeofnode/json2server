@@ -504,21 +504,32 @@ function func(CONFIG_PATH, API_PATH, APP_DIR_PATH) {
                     }
                     if (typeof val !== 'object') {
                         var nw = {};
+                        if (typeof val === 'number' && val > 99 && val < 600) {
+                            nw.status = parseInt(val);
+                            val = (st === undefined) ? 'SUCCESS' : st;
+                        }
                         nw[defKey] = val;
                         val = nw;
                     }
                     res.statusCode = val.status || st || 200;
                     delete val.status;
                     res.setHeader('Content-Type', 'application/json');
-                    var vl = res.exitGate(val, st);
+                    var vl = res.exitGate(val);
                     if (vl !== undefined) {
                         val = vl;
                     }
-                    res.end(JSON.stringify(val));
+                    try {
+                        val = JSON.stringify(val);
+                    } catch (er) {
+                        val = GLOBAL_METHODS.assign({}, val, true);
+                        val.CIRCULAR_JSON_FOUND = 'HENCE_NO_OBJECT_VALUES';
+                        val = JSON.stringify(val);
+                    }
+                    res.end(val);
                 }
             };
 
-            function resp(requestId, method, curr, req, res, cache, methods) {
+            function resp(method, curr, req, res, cache, methods) {
                 if (res.responded) return;
                 var next = sendNow.bind(null, cache.defKey, req, res);
                 var evaling = function(ml) {
@@ -532,7 +543,8 @@ function func(CONFIG_PATH, API_PATH, APP_DIR_PATH) {
                         return af();
                     }
                 };
-                if (['$', '>', 'GET', 'POST', 'PATCH', 'DELETE'].indexOf(method) !== -1) {
+                var notFoundCode = '404';
+                if (['$', '>', 'GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS', 'PUT'].indexOf(method) !== -1) {
                     if (typeof cache.timeout === 'number') {
                         setTimeout(function() {
                             next(evaling(cache.errors['408']));
@@ -540,31 +552,33 @@ function func(CONFIG_PATH, API_PATH, APP_DIR_PATH) {
                     }
                     switch (method) {
                         case '$':
-                            if (curr) return evaling(curr, next);
+                            if (curr) return evaling(curr);
                             else break;
                         case 'POST':
-                            if (curr['$post']) return evaling(curr['$post'], next);
+                            if (curr['$post']) return evaling(curr['$post']);
                             else break;
                         case 'PATCH':
-                            if (curr['$patch']) return evaling(curr['$patch'], next);
+                            if (curr['$patch']) return evaling(curr['$patch']);
                             else break;
                         case 'PUT':
-                            if (curr['$put']) return evaling(curr['$put'], next);
+                            if (curr['$put']) return evaling(curr['$put']);
                             else break;
                         case 'DELETE':
-                            if (curr['$delete']) return evaling(curr['$delete'], next);
+                            if (curr['$delete']) return evaling(curr['$delete']);
                             else break;
                         case 'OPTIONS':
-                            if (curr['$options']) return evaling(curr['$options'], next);
+                            if (curr['$options']) return evaling(curr['$options']);
                             else break;
                         case 'GET':
-                            if (curr['$'] || curr['$get']) return evaling((curr['$'] || curr['$get']), next);
+                            if (curr['$'] || curr['$get']) return evaling((curr['$'] || curr['$get']));
                             else break;
                         case '>':
-                            if (curr['>']) return evaling(curr['>'], next);
+                            if (curr['>']) return evaling(curr['>']);
+                            break;
                     }
+                    notFoundCode = '405';
                 }
-                next(evaling(cache.errors['404']));
+                next(evaling(cache.errors[notFoundCode]));
             }
 
             function handler(req, res) {
@@ -619,7 +633,16 @@ function func(CONFIG_PATH, API_PATH, APP_DIR_PATH) {
                         }
                     }
                 }
-                resp(String(cache.requestId), notFound ? false : method, vl, req, res, cache, methods);
+                var nf = true,
+                    vlk = Object.keys(vl),
+                    vlkl = vlk.length;
+                for (var z = 0; z < vlkl; z++) {
+                    if (vlk[z].charAt(0) === '$') {
+                        nf = false;
+                        break;
+                    }
+                }
+                resp(((notFound || nf) ? false : method), vl, req, res, cache, methods);
             };
 
             return handler;

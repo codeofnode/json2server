@@ -23,6 +23,11 @@
         "requestId" : "{{requestId}}",
         "status" : 400
       },
+      "405" : {
+        "{{defKey}}" : "{{locale.{{currentLocale}}.405}}",
+        "requestId" : "{{requestId}}",
+        "status" : 405
+      },
       "inval" : {
         "{{defKey}}" : "{{locale.{{currentLocale}}.invalidparams}}",
         "requestId" : "{{requestId}}",
@@ -39,6 +44,7 @@
         "500" : "An unknown error has been occurred. Please contact us at {{supportEmail}} with request id {{requestId}}",
         "408" : "It taking huge time to evaluate request. Time out. Aborted.",
         "404" : "Invalid request route.",
+        "405" : "Method not allowed.",
         "400" : "Invalid inputs.",
         "invalidparams" : "Request parameter was invalid."
       }

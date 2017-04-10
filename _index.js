@@ -2,7 +2,7 @@
 
 var MAIN_MODULES = {
     _methods: {},
-    _static: {}
+    _mains: {}
 };
 const fs = require('fs'),
     path = require('path');
@@ -244,7 +244,7 @@ GLOBAL_METHODS.replace = (function() {
 
     return deepReplace;
 });
-MAIN_MODULES._static.handler = (function() {
+MAIN_MODULES._mains.handler = (function() {
     const url = require('url'),
         S_VARS = JSON.stringify(GLOBAL_VARS),
         IS_ALPHA_NUM = GLOBAL_METHODS.isAlphaNum;
@@ -440,21 +440,32 @@ MAIN_MODULES._static.handler = (function() {
             }
             if (typeof val !== 'object') {
                 var nw = {};
+                if (typeof val === 'number' && val > 99 && val < 600) {
+                    nw.status = parseInt(val);
+                    val = (st === undefined) ? 'SUCCESS' : st;
+                }
                 nw[defKey] = val;
                 val = nw;
             }
             res.statusCode = val.status || st || 200;
             delete val.status;
             res.setHeader('Content-Type', 'application/json');
-            var vl = res.exitGate(val, st);
+            var vl = res.exitGate(val);
             if (vl !== undefined) {
                 val = vl;
             }
-            res.end(JSON.stringify(val));
+            try {
+                val = JSON.stringify(val);
+            } catch (er) {
+                val = GLOBAL_METHODS.assign({}, val, true);
+                val.CIRCULAR_JSON_FOUND = 'HENCE_NO_OBJECT_VALUES';
+                val = JSON.stringify(val);
+            }
+            res.end(val);
         }
     };
 
-    function resp(requestId, method, curr, req, res, cache, methods) {
+    function resp(method, curr, req, res, cache, methods) {
         if (res.responded) return;
         var next = sendNow.bind(null, cache.defKey, req, res);
         var evaling = function(ml) {
@@ -468,7 +479,8 @@ MAIN_MODULES._static.handler = (function() {
                 return af();
             }
         };
-        if (['$', '>', 'GET', 'POST', 'PATCH', 'DELETE'].indexOf(method) !== -1) {
+        var notFoundCode = '404';
+        if (['$', '>', 'GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS', 'PUT'].indexOf(method) !== -1) {
             if (typeof cache.timeout === 'number') {
                 setTimeout(function() {
                     next(evaling(cache.errors['408']));
@@ -476,31 +488,33 @@ MAIN_MODULES._static.handler = (function() {
             }
             switch (method) {
                 case '$':
-                    if (curr) return evaling(curr, next);
+                    if (curr) return evaling(curr);
                     else break;
                 case 'POST':
-                    if (curr['$post']) return evaling(curr['$post'], next);
+                    if (curr['$post']) return evaling(curr['$post']);
                     else break;
                 case 'PATCH':
-                    if (curr['$patch']) return evaling(curr['$patch'], next);
+                    if (curr['$patch']) return evaling(curr['$patch']);
                     else break;
                 case 'PUT':
-                    if (curr['$put']) return evaling(curr['$put'], next);
+                    if (curr['$put']) return evaling(curr['$put']);
                     else break;
                 case 'DELETE':
-                    if (curr['$delete']) return evaling(curr['$delete'], next);
+                    if (curr['$delete']) return evaling(curr['$delete']);
                     else break;
                 case 'OPTIONS':
-                    if (curr['$options']) return evaling(curr['$options'], next);
+                    if (curr['$options']) return evaling(curr['$options']);
                     else break;
                 case 'GET':
-                    if (curr['$'] || curr['$get']) return evaling((curr['$'] || curr['$get']), next);
+                    if (curr['$'] || curr['$get']) return evaling((curr['$'] || curr['$get']));
                     else break;
                 case '>':
-                    if (curr['>']) return evaling(curr['>'], next);
+                    if (curr['>']) return evaling(curr['>']);
+                    break;
             }
+            notFoundCode = '405';
         }
-        next(evaling(cache.errors['404']));
+        next(evaling(cache.errors[notFoundCode]));
     }
 
     function handler(req, res) {
@@ -555,12 +569,21 @@ MAIN_MODULES._static.handler = (function() {
                 }
             }
         }
-        resp(String(cache.requestId), notFound ? false : method, vl, req, res, cache, methods);
+        var nf = true,
+            vlk = Object.keys(vl),
+            vlkl = vlk.length;
+        for (var z = 0; z < vlkl; z++) {
+            if (vlk[z].charAt(0) === '$') {
+                nf = false;
+                break;
+            }
+        }
+        resp(((notFound || nf) ? false : method), vl, req, res, cache, methods);
     };
 
     return handler;
 });
-MAIN_MODULES._static.server = (function() {
+MAIN_MODULES._mains.server = (function() {
     function server(handler) {
         var isHttps = typeof httpsConfig === 'object' && httpsConfig,
             mod = isHttps ? require('https') : require("http"),
@@ -633,7 +656,7 @@ var forOneModule = function(bs) {
 
 forOneModule();
 
-FILE_STR += '(' + MAIN_MODULES._static.server + ')()((' + MAIN_MODULES._static.handler + ')());';
+FILE_STR += '(' + MAIN_MODULES._mains.server + ')()((' + MAIN_MODULES._mains.handler + ')());';
 
 fs.writeFile(path.join(process.cwd(), 'index.js'), FILE_STR, function(err) {
     if (err) throw err;

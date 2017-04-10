@@ -1,6 +1,6 @@
 {
   "name": "json2server",
-  "version": "0.0.6",
+  "version": "0.0.8",
   "description": "Provide a json to ready a server. It has routes, validations and more.",
   "keywords": [
     "server",
