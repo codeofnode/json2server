@@ -16,7 +16,7 @@
 > refer defaults.json for an idea and default values
 ```txt
 {
-	"_vars" : {
+  "_vars" : {
     "var1" : "val1",
     "name" : "json2server",
     "version" : "0.0.1",
@@ -98,7 +98,7 @@
         "uponEvent" : "body-recieved", // call only after this event is recieved from `req`
         "@" : "evaluateAndSendResponse", // last parameter to this utility is always a callback calling which will respond to client rightaway with first argument as the response object and second argument as the statusCode
         "params" : [
-          "param also be passed"
+          "param can also be passed"
         ]
       },
       "$patch" : { // represents the response against PATCH request
@@ -122,5 +122,6 @@
 > checked once a module/route is passed through the request url path
 1. "+"
 2. "="
-3. "{$,c$,u$,p$,d$,o$}"
+3. "{$,$post,$put,$patch,$delete,$options,:pathvar}"
+4. "{anyChildRoute}"
 ```
