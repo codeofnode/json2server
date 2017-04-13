@@ -54,7 +54,7 @@
         }
       },
       { // say some validation depends on some async task.. like reading the body. Means body parameters will only be available after parsing the body etc. say at point request emit an event say `body-recieved` then we need to check for the validations. in this case the first parameter must be a string with the event name.
-        "uponEvent":"body-recieved", //up event `body-recieved` this vaildation will be done
+        "once":"body-recieved", //up event `body-recieved` this vaildation will be done
         "@" : "aUtilityToValidateQueryParam", // calling a utility that must return true in order to go ahead, otherwise the failed message linked (as last item of this validation array) will be sent immediated and request will be terminated
         "params": [
           "{{params.query.aQueryParam}}" // pass as argument
@@ -95,7 +95,7 @@
         ]
       },
       "$post" : { // represents the response against POST request
-        "uponEvent" : "body-recieved", // call only after this event is recieved from `req`
+        "once" : "body-recieved", // call only after this event is recieved from `req`
         "@" : "evaluateAndSendResponse", // last parameter to this utility is always a callback calling which will respond to client rightaway with first argument as the response object and second argument as the statusCode
         "params" : [
           "param can also be passed"

@@ -393,8 +393,8 @@ function func(CONFIG_PATH, API_PATH, APP_DIR_PATH) {
                                         }
                                         return ps;
                                     };
-                                    if (typeof vl[n].uponEvent === 'string') {
-                                        rq.once(vl[n].uponEvent, bth.bind(null, vl[n], pass));
+                                    if (typeof vl[n].once === 'string') {
+                                        rq.once(vl[n].once, bth.bind(null, vl[n], pass));
                                         continue;
                                     } else {
                                         if (bth(vl[n], pass) === false) {
@@ -537,8 +537,8 @@ function func(CONFIG_PATH, API_PATH, APP_DIR_PATH) {
                         if (res.responded) return;
                         return evaluate(req, res, cache, methods, ml, next);
                     };
-                    if (ml && typeof ml['uponEvent'] === 'string') {
-                        req.once(ml['uponEvent'], af);
+                    if (ml && typeof ml.once === 'string') {
+                        req.once(ml.once, af);
                     } else {
                         return af();
                     }
