@@ -1,6 +1,6 @@
 #! /usr/bin/env node
 
-var SERVER_FILE_NAME = 'index.js';
+var SERVER_FILE_NAME = 'client.js';
 var MAIN_MODULES = {
   _methods: {},
   _mains: {}
@@ -285,13 +285,116 @@ GLOBAL_METHODS.stringify = (function() {
 
   return func;
 });
+MAIN_MODULES._mains.server = (function() {
+  var mainHandler = false;
+
+  var MAIN_CONT_ID = 'main-content-block';
+
+  var ReqResMap = {};
+
+  function getNewReqRes(idm) {
+    if (ReqResMap[idm]) {
+      return ReqResMap[idm];
+    } else {
+      ReqResMap[idm] = [new Request(), new Response()];
+      return ReqResMap[idm];
+    }
+  }
+
+  window.topath = function(route, title, data) {
+    if (typeof route === 'string') {
+      window.history.pushState(data, title, route);
+    }
+    var ar = getNewReqRes(location.pathname);
+    GLOBAL_METHODS.hideAllChildren(document.getElementById(MAIN_CONT_ID));
+    ar[1].element.style.display = 'block';
+    mainHandler(ar[0], ar[1]);
+  };
+
+  var eventer = GLOBAL_METHODS.eventer();
+
+  var evon = eventer.on.bind(eventer),
+    evonce = eventer.once.bind(eventer),
+    evemit = eventer.emit.bind(eventer),
+    evremoveListener = eventer.removeListener.bind(eventer);
+
+  function Request() {
+    this.on = evon;
+    this.once = evonce;
+    this.emit = evemit;
+    this.removeListener = evremoveListener;
+    this.method = 'GET';
+    var lc = location;
+    this.parsedUrl = {
+      hash: lc.hash,
+      host: lc.host,
+      hostname: lc.hostname,
+      href: lc.href,
+      origin: lc.origin,
+      pathname: lc.pathname,
+      port: lc.port,
+      protocol: lc.protocol
+    };
+  }
+
+  function createOrGetDiv(idm) {
+    var curEl = document.getElementById(idm);
+    var mainBlock = document.getElementById(MAIN_CONT_ID);
+    if (!mainBlock) return alert('System not ready. Please refresh the page.');
+    if (!curEl) {
+      curEl = GLOBAL_METHODS.appendHtml(mainBlock, '<div id="' + idm + '"></div>');
+    }
+    return curEl;
+  }
+
+  function Response(opts) {
+    this.divId = location.pathname.split('/').join('-')
+    this.element = createOrGetDiv(this.divId);
+  }
+
+  Response.prototype.end = function(str) {
+    switch (this.statusCode) {
+      case 201:
+        GLOBAL_METHODS.appendHtml(this.element, str);
+        break;
+      default:
+        this.innerHTML = str;
+    }
+  };
+
+  function server(handler) {
+    if (!mainHandler) mainHandler = handler;
+    topath();
+  };
+
+  return server;
+});
 MAIN_MODULES._mains.handler = (function() {
   const IS_ALPHA_NUM = GLOBAL_METHODS.isAlphaNum;
-  const S_VARS = JSON.stringify(GLOBAL_VARS);
+  var S_VARS = GLOBAL_VARS;
 
+  window.GlobalStore = GLOBAL_METHODS.store();
+
+  function fromSource(src, after) {
+    if (typeof src === 'string' && src.indexOf('http') === 0) {
+      GLOBAL_METHODS.request(src, function(er, obj) {
+        if (er) after(er);
+        else if (typeof obj.status === 'number' && obj.status > 199 && obj.status < 300) {
+          after(null, obj.parsed);
+        } else {
+          after(obj.parsed);
+        }
+      });
+    } else {
+      if (!Array.isArray(src)) {
+        src = [src];
+      }
+      after(null, src);
+    }
+  }
 
   function getNewVars() {
-    var cache = JSON.parse(S_VARS);
+    var cache = S_VARS;
     if (typeof cache.params !== 'object' || cache.params === null) cache.params = {};
     if (typeof cache.params.path !== 'object' || cache.params.path === null) cache.params.path = {};
     if (typeof cache.params.query !== 'object' || cache.params.query === null) cache.params.query = {};
@@ -302,7 +405,6 @@ MAIN_MODULES._mains.handler = (function() {
   }
 
   var forOneObj = function(rq, rs, cache, methods, ob) {
-    if (rs.responded) return;
     GLOBAL_METHODS.assign(cache, ob._vars);
     GLOBAL_METHODS.assign(methods, ob._methods);
     var kys = Object.keys(ob).sort(),
@@ -349,7 +451,6 @@ MAIN_MODULES._mains.handler = (function() {
             if (typeof vl[n] === 'object' && vl[n]) {
               var ch = function(vl1, vl2, ps) {
                 if (!vl2) vl2 = cache.errors.inval;
-                if (rs.responded) return;
                 if (ps) {
                   var er = evaluate(rq, rs, cache, methods, vl1);
                   if (er) {
@@ -374,7 +475,6 @@ MAIN_MODULES._mains.handler = (function() {
                 return ps;
               };
               var bth = function(vls, ps) {
-                if (rs.responded) return;
                 if (typeof vls.eval === 'string' && vls.eval) {
                   ps = ps && ch(vls.eval, vls.ifFailed, ps);
                 }
@@ -422,7 +522,6 @@ MAIN_MODULES._mains.handler = (function() {
   };
 
   function evaluate(req, res, cache, methods, obj, next) {
-    if (res.responded) return;
     var isAsync = typeof next === 'function',
       isFunc = false,
       pms = [];
@@ -486,11 +585,6 @@ MAIN_MODULES._mains.handler = (function() {
   }
 
   function sendNow(defKey, req, res, val, st) {
-    if (res.hasOwnProperty('responded')) {
-      return;
-    }
-    res.responded = true;
-    req.removeAllListeners();
     if (val === undefined || val === null) {
       val = 'SUCCESS';
     }
@@ -505,7 +599,6 @@ MAIN_MODULES._mains.handler = (function() {
     }
     res.statusCode = val.status || st || 200;
     delete val.status;
-    res.setHeader('Content-Type', 'application/json');
     var vl = res.exitGate(val);
     if (vl !== undefined) {
       val = vl;
@@ -514,18 +607,37 @@ MAIN_MODULES._mains.handler = (function() {
   }
 
   function resp(method, curr, req, res, cache, methods) {
-    if (res.responded) return;
     var next = sendNow.bind(null, cache.defKey, req, res);
     var evaling = function(ml) {
       var af = function(dt, num, noev) {
         var nxt = next;
-        if (res.responded) return;
+        if (!noev && typeof ml.on === 'string') {
+          evaluate(req, res, cache, methods, ml.on).split(',').forEach(function(ev) {
+            ev = ev.trim();
+            if (ev.length) {
+              req.on(ev, af.bind(null, dt, num, true));
+            }
+          });
+        }
+        cache.currentData = dt;
+        if (typeof num === 'number') {
+          nxt = next.bind(null, num);
+        }
         return evaluate(req, res, cache, methods, ml, nxt);
       };
       if (ml && typeof ml.once === 'string') {
         req.once(ml.once, af);
       } else {
-        return af();
+        if (ml.from !== undefined) {
+          fromSource(evaluate(req, res, cache, methods, ml.from), function(er, data) {
+            if (er || !data) {
+              af(er || 'Record not found.', 400);
+            } else {
+              af(data);
+            }
+          });
+        } else
+          return af();
       }
     };
     var notFoundCode = '404';
@@ -539,28 +651,13 @@ MAIN_MODULES._mains.handler = (function() {
         case '$':
           if (curr) return evaling(curr);
           else break;
-        case 'POST':
-          if (curr['$post']) return evaling(curr['$post']);
-          else break;
-        case 'PATCH':
-          if (curr['$patch']) return evaling(curr['$patch']);
-          else break;
-        case 'PUT':
-          if (curr['$put']) return evaling(curr['$put']);
-          else break;
-        case 'DELETE':
-          if (curr['$delete']) return evaling(curr['$delete']);
-          else break;
-        case 'OPTIONS':
-          if (curr['$options']) return evaling(curr['$options']);
-          else break;
         case 'GET':
           var nw = curr['$'] || curr['$get'];
           if (nw) {
             var kn = nw['$>'];
             if (kn) kn = evaluate(req, res, cache, methods, kn);
             if (typeof kn === 'string' && curr[kn]) {
-              return evaling(curr[kn]);
+              return window.topath((req.parsedUrl.pathname.length > 1 ? req.parsedUrl.pathname : '') + '/' + kn);
             } else {
               return evaling(nw);
             }
@@ -569,6 +666,42 @@ MAIN_MODULES._mains.handler = (function() {
           }
         case '>':
           if (curr['>']) {
+            var nw = curr['>'];
+            var fe = GLOBAL_METHODS.lastValue(nw, 'forEach', '@');
+            if (nw.from !== undefined && typeof fe === 'string' && typeof methods[fe] === 'function') {
+              fromSource(evaluate(req, res, cache, methods, nw.from), function(er, data) {
+                if (er || !(Array.isArray(data)) || !(data.length)) {
+                  next(er || 'No records found.', 400);
+                } else {
+                  if (typeof nw.storeAs === 'string') {
+                    window.GlobalStore.set(nw.storeAs, data);
+                  }
+                  var ln = data.length;
+
+                  function forOne(data, z, as) {
+                    methods[fe](cache, methods, req, res, data, z, next.bind(null, as));
+                  }
+                  var evs = nw.forEach.on;
+                  var reg = function() {};
+                  if (typeof evs === 'string' && evs) {
+                    reg = function(data, z) {
+                      var idk = cache.idKey || 'id';
+                      evs.split(',').forEach(function(ev) {
+                        ev = ev.trim();
+                        if (ev.length) {
+                          req.on(ev.replace('{{id}}', data[idk]), forOne.bind(null, data, z, 202));
+                        }
+                      });
+                    };
+                  }
+                  for (var z = 0; z < ln; z++) {
+                    reg(data[z], z);
+                    forOne(data[z], z, 201);
+                  }
+                }
+              });
+              return next('Loading ..');
+            }
             return evaling(curr['>']);
           }
           break;
@@ -590,7 +723,7 @@ MAIN_MODULES._mains.handler = (function() {
     req.once('respondNow', function(vlm, st) {
       sendNow(cache.defKey, req, res, evaluate(req, res, cache, methods, vlm), st);
     });
-    GLOBAL_METHODS.assign(methods, GLOBAL_METHODS);
+    methods = GLOBAL_METHODS;
     curr = forOneObj(req, res, cache, methods, GLOBAL_API._root), vl = GLOBAL_API._root;
     var exitGate = GLOBAL_METHODS.lastValue(GLOBAL_API._root, '_methods', 'exitGate');
     res.exitGate = exitGate === 'function' ? exitGate.bind(res, cache, methods, req, res) : function() {};
@@ -610,7 +743,6 @@ MAIN_MODULES._mains.handler = (function() {
             prk = curr[2];
             vl = curr[0][prk];
           } else {
-            vl = false;
             notFound = true;
             break;
           }
@@ -618,13 +750,11 @@ MAIN_MODULES._mains.handler = (function() {
           if (curr === 0) {
             return;
           } else if (req.notFound === true) {
-            vl = false;
             curr = false;
             notFound = true;
             break;
           }
         } else {
-          vl = false;
           notFound = true;
           break;
         }
@@ -639,28 +769,172 @@ MAIN_MODULES._mains.handler = (function() {
         break;
       }
     }
+    req.pathFound = notFound;
+    req.methodFound = nf;
+    notFound = nf = false;
     resp(((notFound || nf) ? false : method), vl, req, res, cache, methods);
   };
 
   return handler;
 });
-MAIN_MODULES._mains.server = (function() {
-  function server(inputHandler) {
-    function handler(req, res) {
-      req.parsedUrl = require('url').parse(req.url);
-      inputHandler(req, res);
+GLOBAL_METHODS.appendHtml = (function() {
+  function func(el, str) {
+    var last = null,
+      div = document.createElement('div');
+    div.innerHTML = str;
+    while (div.children.length > 0) {
+      last = el.appendChild(div.children[0]);
     }
-    var isHttps = typeof httpsConfig === 'object' && httpsConfig,
-      mod = isHttps ? require('https') : require("http"),
-      port = process.env.PORT || GLOBAL_APP_CONFIG.port || 3000;
+    return last;
+  }
 
-    var server = isHttps ? mod.createServer(httpsConfig, handler) : mod.createServer(handler);
-    server.listen(parseInt(port, 10));
+  return func;
+});
+GLOBAL_METHODS.eventer = (function() {
+  function func() {
+    function EventEmitter() {
+      this.events = {};
+    }
 
-    console.log("Server running at\n  => http://localhost:" + port + "/\nCTRL + C to shutdown");
-  };
+    EventEmitter.prototype.on = function(event, listener) {
+      if (typeof this.events[event] !== 'object') {
+        this.events[event] = [];
+      }
+      this.events[event].push(listener);
+    };
 
-  return server;
+    EventEmitter.prototype.removeListener = function(event, listener) {
+      var idx;
+      if (typeof this.events[event] === 'object') {
+        idx = this.events[event].indexOf(listener);
+        if (idx > -1) {
+          this.events[event].splice(idx, 1);
+        }
+      }
+    };
+
+    EventEmitter.prototype.emit = function(event) {
+      var i, listeners, length, args = [].slice.call(arguments, 1);
+
+      if (typeof this.events[event] === 'object') {
+        listeners = this.events[event].slice();
+        length = listeners.length;
+
+        for (i = 0; i < length; i++) {
+          listeners[i].apply(this, args);
+        }
+      }
+    };
+
+    EventEmitter.prototype.once = function(event, listener) {
+      this.on(event, function g() {
+        this.removeListener(event, g);
+        listener.apply(this, arguments);
+      });
+    };
+
+    return new EventEmitter();
+  }
+
+  return func;
+});
+GLOBAL_METHODS.hideAllChildren = (function() {
+  function func(el) {
+    var itemDivs = el.children,
+      n = itemDivs.length;
+    for (var i = 0; i < n; i++) {
+      itemDivs[i].style.display = 'none';
+    }
+  }
+
+  return func;
+});
+GLOBAL_METHODS.request = (function() {
+  function isObect(ob) {
+    return typeof ob === 'object' && ob !== null && !(Array.isArray(ob));
+  }
+
+  function func(options, cb) {
+    var url, method, payload, headers, toParse;
+    if (typeof cb !== 'function') {
+      cb = function() {};
+    }
+    if (typeof options === 'string') {
+      url = options;
+      method = 'GET';
+      toParse = JSON.stringify;
+    } else if (isObect(options)) {
+      url = options.url;
+      method = options.method;
+      payload = options.payload;
+      headers = options.headers;
+      toParse = options.toParse;
+    } else {
+      return cb('INVALID_OPTIONS');
+    }
+    if (typeof url !== 'string' || !url.length) {
+      return cb('URL_NOT_FOUND');
+    }
+    if (typeof method !== 'string' || !method.length) {
+      return cb('METHOD_NOT_FOUND');
+    }
+    var httpRequest = new XMLHttpRequest();
+    if (!httpRequest) {
+      return cb('XMLHTTP_NOT_AVAILABLE');
+    }
+    httpRequest.onreadystatechange = function() {
+      if (httpRequest.readyState === XMLHttpRequest.DONE) {
+        var toSend = {
+          statusCode: httpRequest.status,
+          content: httpRequest.responseText,
+        };
+        if (httpRequest.responseXML) {
+          toSend.parsed = httpRequest.responseXML;
+        } else if (typeof toParse === 'function') {
+          try {
+            toSend.parsed = toParse(httpRequest.responseText);
+          } catch (er) {
+            toSend.parseError = er;
+          }
+        }
+        cb(null, toSend);
+      }
+    }
+    httpRequest.open(method, url, true);
+    if (isObect(options.headers)) {
+      for (var ky in options.headers) {
+        if (typeof options.headers[ky] === 'string') {
+          httpRequest.setRequestHeader(ky, options.headers[ky]);
+        }
+      }
+    }
+    if (typeof payload !== undefined) {
+      payload = GLOBAL_METHODS.stirngify(payload);
+      httpRequest.send(payload);
+    } else {
+      httpRequest.send();
+    }
+  }
+
+  return func;
+});
+GLOBAL_METHODS.store = (function() {
+  function func() {
+    function Store() {
+      this.db = {};
+    }
+    Store.prototype.set = function(name, arr) {
+      this.db[name] = arr;
+    }
+    Store.prototype.get = function(name) {
+      return this.db[name];
+    }
+    Store.prototype.setOne = function(name, id, data) {}
+    Store.prototype.getOne = function(name, id) {}
+    return new Store();
+  }
+
+  return func;
 });
 const N_REG = MAIN_MODULES._methods.isAlphaNum();
 var mes = Object.keys(MAIN_MODULES._methods);
