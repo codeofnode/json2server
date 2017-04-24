@@ -1,6 +1,6 @@
 #! /usr/bin/env node
 
-var SERVER_FILE_NAME = 'client.js';
+var SERVER_FILE_NAME = process.env.OUTFILE || 'client.js';
 var MAIN_MODULES = {
   _methods: {},
   _mains: {}
@@ -8,17 +8,22 @@ var MAIN_MODULES = {
 const fs = require('fs'),
   path = require('path');
 const DEFAULTS = require(path.join(__dirname, 'defaults.json'));
-var GLOBAL_METHODS = MAIN_MODULES._methods;
-var MAINS = {};
+var GLOBAL_METHODS = MAIN_MODULES._methods,
+  configFile = (process.env.J2SCONFIG || 'j2s.json');
+var MAINS = {},
+  jsonFile = (process.argv[2] || 'client.json'),
+  rootName = process.env.MOD_DIR || 'modules';
 try {
-  MAINS = require(path.join(process.cwd(), 'api.json'));
+  MAINS = require(path.join(process.cwd(), jsonFile));
 } catch (er) {
-  console.log('`api.json` not available..!');
+  console.log('`' + jsonFile + '` not available..!');
   console.log(er);
 }
 var GLOBAL_API = DEFAULTS,
   FILE_STR = 'GLOBAL_METHODS={}; GLOBAL_APP_CONFIG = {};';
-FILE_STR += 'try { GLOBAL_APP_CONFIG = require(\'./config.json\'); } catch(erm){ }';
+try {
+  FILE_STR += 'GLOBAL_APP_CONFIG = ' + JSON.stringify(require(process.cwd() + '/' + configFile)) + ';';
+} catch (erm) {}
 GLOBAL_METHODS.assign = (function() {
   function func(ab, bb, noob) {
     if (typeof ab !== 'object' || !ab) ab = Array.isArray(bb) ? new Array(bb.length) : {};
@@ -62,25 +67,6 @@ GLOBAL_METHODS.lastValue = (function() {
       }
     }
     return now;
-  }
-
-  return func;
-});
-GLOBAL_METHODS.makemsg = (function() {
-  function func(vars, msgname, args) {
-    var ln = args.length,
-      st = GLOBAL_METHODS.lastValue(vars.locale, vars.currentLocale, msgname);
-    if (st === undefined) return 'LOCALE_MESSAGE_ERROR';
-    for (var vm = 0; vm < ln; vm++) {
-      if (typeof args[vm] === 'function') {
-        return args[vm]({
-          _: st,
-          status: 400
-        });
-      }
-      st = st.replace(('\{\{' + vm + '\}\}'), typeof args[vm] === 'string' ? args[vm] : JSON.stringify(args[vm]));
-    }
-    return st;
   }
 
   return func;
@@ -268,11 +254,11 @@ GLOBAL_METHODS.resolveSlash = (function() {
   return func;
 });
 GLOBAL_METHODS.stringify = (function() {
-  function func(st) {
+  function func(st, pretty) {
     if (typeof st !== 'string') {
       if (typeof st === 'object') {
         try {
-          st = JSON.stringify(st);
+          st = pretty ? JSON.stringify(st, null, '  ') : JSON.stringify(st);
         } catch (er) {
           st = String(st);
         }
@@ -301,15 +287,18 @@ MAIN_MODULES._mains.server = (function() {
     }
   }
 
-  window.topath = function(route, title, data) {
+  window.topath = function(route, title, data, handle) {
     if (typeof route === 'string') {
       window.history.pushState(data, title, route);
     }
     var ar = getNewReqRes(location.pathname);
     GLOBAL_METHODS.hideAllChildren(document.getElementById(MAIN_CONT_ID));
     ar[1].element.style.display = 'block';
-    mainHandler(ar[0], ar[1]);
+    if (handle !== false) mainHandler(ar[0], ar[1]);
+    return false;
   };
+
+  window.r2 = topath;
 
   var eventer = GLOBAL_METHODS.eventer();
 
@@ -324,17 +313,7 @@ MAIN_MODULES._mains.server = (function() {
     this.emit = evemit;
     this.removeListener = evremoveListener;
     this.method = 'GET';
-    var lc = location;
-    this.parsedUrl = {
-      hash: lc.hash,
-      host: lc.host,
-      hostname: lc.hostname,
-      href: lc.href,
-      origin: lc.origin,
-      pathname: lc.pathname,
-      port: lc.port,
-      protocol: lc.protocol
-    };
+    this.parsedUrl = GLOBAL_METHODS.getParsedURL();
   }
 
   function createOrGetDiv(idm) {
@@ -353,12 +332,19 @@ MAIN_MODULES._mains.server = (function() {
   }
 
   Response.prototype.end = function(str) {
+    if (!str) return;
+    if (typeof str !== 'string') {
+      str = str[GLOBAL_VARS.defKey];
+    }
+    if (typeof str !== 'string') {
+      return;
+    }
     switch (this.statusCode) {
       case 201:
         GLOBAL_METHODS.appendHtml(this.element, str);
         break;
       default:
-        this.innerHTML = str;
+        this.element.innerHTML = str;
     }
   };
 
@@ -376,10 +362,10 @@ MAIN_MODULES._mains.handler = (function() {
   window.GlobalStore = GLOBAL_METHODS.store();
 
   function fromSource(src, after) {
-    if (typeof src === 'string' && src.indexOf('http') === 0) {
+    if (typeof src === 'string') {
       GLOBAL_METHODS.request(src, function(er, obj) {
         if (er) after(er);
-        else if (typeof obj.status === 'number' && obj.status > 199 && obj.status < 300) {
+        else if (typeof obj.statusCode === 'number' && obj.statusCode > 199 && obj.statusCode < 300) {
           after(null, obj.parsed);
         } else {
           after(obj.parsed);
@@ -402,6 +388,17 @@ MAIN_MODULES._mains.handler = (function() {
     if (typeof cache.params.header !== 'object' || cache.params.header === null) cache.params.header = {};
     if (!(Array.isArray(cache.params.file))) cache.params.file = [];
     return cache;
+  }
+
+  function register(ob, req, ev, call, modev) {
+    if (typeof ev !== 'string') return;
+    ev = ev.trim();
+    if (!ev.length) return;
+    if (typeof modev === 'function') ev = modev(ev);
+    if (!(ob['/'])) {
+      req.on(ev, call);
+      ob['/'] = true;
+    }
   }
 
   var forOneObj = function(rq, rs, cache, methods, ob) {
@@ -430,10 +427,7 @@ MAIN_MODULES._mains.handler = (function() {
             cl(pluskeys[n], vl[pluskeys[n]]);
             if (typeof vl[pluskeys[n]].on === 'string' && vl[pluskeys[n]].on.length) {
               evaluate(rq, rs, cache, methods, vl[pluskeys[n]].on).split(',').forEach(function(ev) {
-                ev = ev.trim();
-                if (ev.length) {
-                  rq.on(ev, cl.bind(null, pluskeys[n], vl[pluskeys[n]]));
-                }
+                register(vl[pluskeys[n]], rq, ev, cl.bind(null, pluskeys[n], vl[pluskeys[n]]));
               });
             }
           }
@@ -521,11 +515,22 @@ MAIN_MODULES._mains.handler = (function() {
     return false;
   };
 
+  function rectify(obj, cache, methods) {
+    var ob;
+    if (typeof obj === 'object' && obj !== null) {
+      ob = GLOBAL_METHODS.assign(undefined, obj);
+    } else {
+      ob = obj;
+    }
+    ob = GLOBAL_METHODS.replace(ob, cache, methods);
+    return ob;
+  }
+
   function evaluate(req, res, cache, methods, obj, next) {
     var isAsync = typeof next === 'function',
       isFunc = false,
       pms = [];
-    if (typeof obj['@'] === 'string') {
+    if (obj && typeof obj['@'] === 'string') {
       isFunc = obj['@'];
       if (typeof methods[isFunc] !== 'function') {
         isFunc = GLOBAL_METHODS.replace(obj['@'], cache, methods);
@@ -561,8 +566,7 @@ MAIN_MODULES._mains.handler = (function() {
           'params': pms
         }, cache, methods);
       } else {
-        obj = GLOBAL_METHODS.assign({}, obj);
-        next(GLOBAL_METHODS.replace(obj, cache, methods));
+        next(rectify(obj, cache, methods));
       }
     } else {
       var ob;
@@ -573,12 +577,7 @@ MAIN_MODULES._mains.handler = (function() {
         };
         ob = GLOBAL_METHODS.replace(ob, cache, methods);
       } else {
-        if (typeof obj === 'object' && obj !== null) {
-          ob = GLOBAL_METHODS.assign({}, obj);
-        } else {
-          ob = obj;
-        }
-        ob = GLOBAL_METHODS.replace(ob, cache, methods);
+        ob = rectify(obj, cache, methods);
       }
       return ob;
     }
@@ -603,7 +602,7 @@ MAIN_MODULES._mains.handler = (function() {
     if (vl !== undefined) {
       val = vl;
     }
-    res.end(GLOBAL_METHODS.stringify(val));
+    res.end(val);
   }
 
   function resp(method, curr, req, res, cache, methods) {
@@ -611,15 +610,12 @@ MAIN_MODULES._mains.handler = (function() {
     var evaling = function(ml) {
       var af = function(dt, num, noev) {
         var nxt = next;
+        cache.currentData = dt;
         if (!noev && typeof ml.on === 'string') {
           evaluate(req, res, cache, methods, ml.on).split(',').forEach(function(ev) {
-            ev = ev.trim();
-            if (ev.length) {
-              req.on(ev, af.bind(null, dt, num, true));
-            }
+            register(ml, req, ev, af.bind(null, dt, num, true));
           });
         }
-        cache.currentData = dt;
         if (typeof num === 'number') {
           nxt = next.bind(null, num);
         }
@@ -636,8 +632,9 @@ MAIN_MODULES._mains.handler = (function() {
               af(data);
             }
           });
-        } else
+        } else {
           return af();
+        }
       }
     };
     var notFoundCode = '404';
@@ -654,9 +651,15 @@ MAIN_MODULES._mains.handler = (function() {
         case 'GET':
           var nw = curr['$'] || curr['$get'];
           if (nw) {
-            var kn = nw['$>'];
-            if (kn) kn = evaluate(req, res, cache, methods, kn);
-            if (typeof kn === 'string' && curr[kn]) {
+            var isAny = false,
+              kn = nw['$>'];
+            if (kn) {
+              kn = evaluate(req, res, cache, methods, kn);
+              isAny = (Object.keys(curr).filter(function(ab) {
+                return ab.charAt(0) === ':';
+              }).length > 0);
+            }
+            if (typeof kn === 'string' && (curr[kn] || isAny)) {
               return window.topath((req.parsedUrl.pathname.length > 1 ? req.parsedUrl.pathname : '') + '/' + kn);
             } else {
               return evaling(nw);
@@ -687,10 +690,9 @@ MAIN_MODULES._mains.handler = (function() {
                     reg = function(data, z) {
                       var idk = cache.idKey || 'id';
                       evs.split(',').forEach(function(ev) {
-                        ev = ev.trim();
-                        if (ev.length) {
-                          req.on(ev.replace('{{id}}', data[idk]), forOne.bind(null, data, z, 202));
-                        }
+                        register(nw.forEach, req, ev, forOne.bind(null, data, z, 202), function(ev) {
+                          return ev.replace('{{id}}', data[idk]);
+                        });
                       });
                     };
                   }
@@ -711,32 +713,42 @@ MAIN_MODULES._mains.handler = (function() {
     next(evaling(cache.errors[notFoundCode]));
   }
 
+
   function handler(req, res) {
-    var parsed = req.parsedUrl,
-      curr, vl, notFound = false;
-    var paths = parsed.pathname.substring(1).split('/'),
-      pl = paths.length;
     req['$W_END'] = true;
     res['$W_END'] = true;
+    var parsed = req.parsedUrl,
+      curr, vl, notFound = false,
+      pthn = parsed.pathname;
     var cache = getNewVars(),
       methods = {};
+    methods = GLOBAL_METHODS;
+    if (typeof GLOBAL_APP_CONFIG.mountPath === 'string') {
+      if (pthn.indexOf(GLOBAL_APP_CONFIG.mountPath) !== 0) {
+        return resp(false, curr, req, res, cache, methods);
+      } else {
+        pthn = GLOBAL_METHODS.resolveSlash(pthn.substring(GLOBAL_APP_CONFIG.mountPath.length));
+      }
+    }
+    var paths = pthn.substring(1).split('/'),
+      pl = paths.length;
     req.once('respondNow', function(vlm, st) {
       sendNow(cache.defKey, req, res, evaluate(req, res, cache, methods, vlm), st);
     });
-    methods = GLOBAL_METHODS;
-    curr = forOneObj(req, res, cache, methods, GLOBAL_API._root), vl = GLOBAL_API._root;
-    var exitGate = GLOBAL_METHODS.lastValue(GLOBAL_API._root, '_methods', 'exitGate');
-    res.exitGate = exitGate === 'function' ? exitGate.bind(res, cache, methods, req, res) : function() {};
+    curr = forOneObj(req, res, cache, methods, GLOBAL_API.root), vl = GLOBAL_API.root;
+    var exitGate = GLOBAL_METHODS.lastValue(GLOBAL_API.root, '_methods', 'exitGate');
+    res.exitGate = typeof exitGate === 'function' ? exitGate.bind(res, cache, methods, req, res) : function() {};
     var method = req.method,
       notFound = GLOBAL_METHODS.lastValue.apply(undefined, [GLOBAL_APP_CONFIG].concat(paths.concat(['enable']))) === false;
     if (paths[0] !== '' && !(notFound)) {
       for (var prk, z = 0; z < pl; z++) {
         prk = paths[z];
+        if (prk === '') {
+          method = '>';
+          break;
+        }
         if (curr) {
-          if (prk === '') {
-            method = '>';
-            break;
-          } else if (curr[1].indexOf(prk) !== -1) {
+          if (curr[1].indexOf(prk) !== -1) {
             vl = curr[0][prk];
           } else if (curr[2]) {
             cache.params.path[curr[2]] = prk;
@@ -764,14 +776,13 @@ MAIN_MODULES._mains.handler = (function() {
       vlk = Object.keys(vl),
       vlkl = vlk.length;
     for (var z = 0; z < vlkl; z++) {
-      if (vlk[z].charAt(0) === '$') {
+      if (vlk[z].charAt(0) === '$' || vlk[z].charAt(0) === '>') {
         nf = false;
         break;
       }
     }
     req.pathFound = notFound;
     req.methodFound = nf;
-    notFound = nf = false;
     resp(((notFound || nf) ? false : method), vl, req, res, cache, methods);
   };
 
@@ -838,6 +849,23 @@ GLOBAL_METHODS.eventer = (function() {
 
   return func;
 });
+GLOBAL_METHODS.getParsedURL = (function() {
+  function func() {
+    var lc = location;
+    return {
+      hash: lc.hash,
+      host: lc.host,
+      hostname: lc.hostname,
+      href: lc.href,
+      origin: lc.origin,
+      pathname: lc.pathname,
+      port: lc.port,
+      protocol: lc.protocol
+    };
+  }
+
+  return func;
+});
 GLOBAL_METHODS.hideAllChildren = (function() {
   function func(el) {
     var itemDivs = el.children,
@@ -862,7 +890,7 @@ GLOBAL_METHODS.request = (function() {
     if (typeof options === 'string') {
       url = options;
       method = 'GET';
-      toParse = JSON.stringify;
+      toParse = JSON.parse;
     } else if (isObect(options)) {
       url = options.url;
       method = options.method;
@@ -884,10 +912,14 @@ GLOBAL_METHODS.request = (function() {
     }
     httpRequest.onreadystatechange = function() {
       if (httpRequest.readyState === XMLHttpRequest.DONE) {
+        var resHeaders = httpRequest.getAllResponseHeaders();
         var toSend = {
           statusCode: httpRequest.status,
           content: httpRequest.responseText,
         };
+        if (resHeaders) {
+          toSend.headers = resHeaders.split('\n');
+        }
         if (httpRequest.responseXML) {
           toSend.parsed = httpRequest.responseXML;
         } else if (typeof toParse === 'function') {
@@ -909,7 +941,7 @@ GLOBAL_METHODS.request = (function() {
       }
     }
     if (typeof payload !== undefined) {
-      payload = GLOBAL_METHODS.stirngify(payload);
+      payload = GLOBAL_METHODS.stringify(payload);
       httpRequest.send(payload);
     } else {
       httpRequest.send();
@@ -945,52 +977,69 @@ mes.forEach(function(ms) {
 var ASSIGN = GLOBAL_METHODS.assign;
 var REPL = GLOBAL_METHODS.replace;
 
-ASSIGN(GLOBAL_API._vars, MAINS._vars, true);
-ASSIGN(GLOBAL_API._vars.locale.en, MAINS._vars.locale.en);
-if (typeof MAINS._root === 'object' && MAINS._root) {
-  ASSIGN(GLOBAL_API._root, MAINS._root, true);
-  ASSIGN(GLOBAL_API._root.$, MAINS._root.$);
+ASSIGN(GLOBAL_API.vars.errors, GLOBAL_METHODS.lastValue(MAINS, 'vars', 'errors'));
+ASSIGN(GLOBAL_API.vars, MAINS.vars);
+if (typeof MAINS.root === 'object' && MAINS.root) {
+  ASSIGN(GLOBAL_API.root, MAINS.root);
 }
 
-REPL(GLOBAL_API, GLOBAL_API._vars);
+REPL(GLOBAL_API, GLOBAL_API.vars);
 
-FILE_STR += 'const GLOBAL_VARS = ' + JSON.stringify(GLOBAL_API._vars) + ';';
-var GLOBAL_VARS = GLOBAL_API._vars;
-delete GLOBAL_API._vars;
+FILE_STR += 'const GLOBAL_VARS = ' + JSON.stringify(GLOBAL_API.vars) + ';';
+var GLOBAL_VARS = GLOBAL_API.vars;
+delete GLOBAL_API.vars;
 FILE_STR += 'GLOBAL_API = ' + JSON.stringify(GLOBAL_API) + ';';
 
-function readOrAvoid(pth) {
-  try {
-    return GLOBAL_METHODS.replace((fs.readFileSync(pth).toString()).split('\n').join(''), GLOBAL_VARS);
-  } catch (lm) {
-    return ''
+function readFromHtml(str, dir, vrt) {
+  var matches = str.match(/\'\'\;\/\/READ_FROM_FILE\,(\w*)\.(\w*)/gm);
+  if (matches) {
+    matches.forEach(function(m) {
+      var fl = m.split(',').pop();
+      var vrs = GLOBAL_METHODS.assign(undefined, GLOBAL_VARS);
+      GLOBAL_METHODS.assign(vrs, vrt);
+      try {
+        str = str.replace(m,
+          "('" + GLOBAL_METHODS.replace((fs.readFileSync(path.join(dir, fl)).toString()).split('\n'), vrs).join('').replace(/\'/g, "\\'") + "');");
+      } catch (lm) {}
+    });
   }
+  return str;
 }
 
 var forOneModule = function(bs) {
   var mods = [];
-  var pths = [process.cwd()];
+  var pths = [path.join(process.cwd(), rootName)];
   if (!(Array.isArray(bs))) bs = [];
   pths = pths.concat(bs);
   try {
     mods = fs.readdirSync(path.join.apply(path, pths.concat(['_methods']))).filter(N_REG);
   } catch (erm) {}
   var bsp = bs.length ? ('.' + (bs.join('.').replace('\/', '.'))) : '';
+  var slicedPath = [rootName].concat(pths.slice(1));
   if (bsp) {
-    FILE_STR += 'if(!(GLOBAL_API._root' + bsp + ')){GLOBAL_API._root' + bsp + '={};}';
-    FILE_STR += 'GLOBAL_API._root' + bsp + '._methods={};';
+    FILE_STR += 'if(!(GLOBAL_API.root' + bsp + ')){GLOBAL_API.root' + bsp + '={};}';
+    FILE_STR += 'GLOBAL_API.root' + bsp + '._methods={};';
+    var vrt = false;
+    try {
+      var vrt = require(path.join.apply(path, pths.concat(['vars.json'])));
+    } catch (er) {}
+    if (vrt) {
+      if (process.env.KEEP_STRUCTURE) {
+        FILE_STR += 'GLOBAL_API.root' + bsp + '._vars=' + ('require(\'./' + (slicedPath.concat(['vars.json'])).join('/') + '\');');
+      } else {
+        FILE_STR += 'GLOBAL_API.root' + bsp + '._vars=' + JSON.stringify(REPL(vrt, GLOBAL_VARS)) + ';';
+      }
+    }
   } else {
-    FILE_STR += 'GLOBAL_API._root._methods={};';
+    FILE_STR += 'GLOBAL_API.root._methods={};';
   }
   mods.forEach(function(ms) {
-    FILE_STR += 'GLOBAL_API._root' + bsp + '._methods' + '.' + ms + ' = ' +
+    var dir = path.join.apply(path, pths.concat(['_methods', ms]));
+    FILE_STR += 'GLOBAL_API.root' + bsp + '._methods' + '.' + ms + ' = ' +
       (process.env.KEEP_STRUCTURE ?
-        ('require(\'./' + pths.slice(1).concat(['_methods', ms]).join('/') + '\');') :
-        ('(function(){' + fs.readFileSync(path.join.apply(path, pths.concat(['_methods', ms, 'index.js'])))
-          .toString().replace('\'\';//READ_FROM_HTML', "'" +
-            readOrAvoid(path.join.apply(path, pths.concat(['_methods', ms, 'index.html']))) + "';"
-          )
-          .replace('module.exports =', 'return') + '})();'));
+        ('require(\'./' + (slicedPath.concat(['_methods', ms])).join('/') + '\');') :
+        ('(function(){' +
+          readFromHtml(fs.readFileSync(path.join(dir, 'index.js')).toString(), dir, vrt).replace('module.exports =', 'return') + '})();'));
   });
   var ms = [];
   try {

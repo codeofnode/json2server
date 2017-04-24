@@ -1,6 +1,6 @@
 {
   "name": "json2server",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "Provide a json to ready a server. It has routes, validations and more.",
   "keywords": [
     "server",
@@ -13,7 +13,9 @@
   },
   "bin": {
     "json2server": "_index.js",
-    "json2client": "_client.js"
+    "json2client": "_client.js",
+    "j2s-create": "create.js",
+    "j2s-struct": "struct.js"
   },
   "bugs": {
     "url": "https://github.com/codeofnode/json2server/issues"

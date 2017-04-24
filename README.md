@@ -4,11 +4,11 @@
 
 ## Why
 
-- Almost zero coding required.
+- Make code structure simple and highly modular
+- Anyone can read and understand the flow control of server at high level.
 - High level configurations and yet fully customizable
 - Variable replacement at init and also at runtime
 - Routes setup within json
-- Modular directories
 
 ## Install
 

@@ -1,14 +1,331 @@
+var GLOBAL_METHODS = {};
+
+GLOBAL_METHODS.assign = (function() {
+  function func(ab, bb, noob) {
+    if (typeof ab !== 'object' || !ab) ab = Array.isArray(bb) ? new Array(bb.length) : {};
+    if (typeof bb === 'object' && bb) {
+      var kys = Object.keys(bb),
+        kl = kys.length;
+      for (var j = 0; j < kl; j++) {
+        if (!noob || (typeof ab[kys[j]] !== 'object') || (typeof bb[kys[j]] !== 'object')) {
+          ab[kys[j]] = bb[kys[j]];
+        }
+      }
+    }
+    return ab;
+  }
+
+  return func;
+})();
+GLOBAL_METHODS.isAlphaNum = (function() {
+  function func(st) {
+    return Boolean(!(/[^A-Za-z0-9]/).test(st));
+  }
+
+  return func;
+})();
+GLOBAL_METHODS.lastValue = (function() {
+  function loop(inp, key) {
+    if (inp !== undefined && inp !== null) {
+      return inp[key];
+    } else return undefined;
+  }
+
+  function func(root) {
+    var len = arguments.length,
+      now = root;
+    for (var z = 1; z < len; z++) {
+      now = loop(root, arguments[z]);
+      if (now === undefined) {
+        break;
+      } else {
+        root = now;
+      }
+    }
+    return now;
+  }
+
+  return func;
+})();
+GLOBAL_METHODS.objwalk = (function() {
+  function walkInto(fun, rt, obj, key, isLast) {
+    fun(obj, key, rt, typeof isLast === 'boolean' ? isLast : true);
+    if (typeof obj === 'object' && obj && obj['$W_END'] !== true) {
+      var kys = Object.keys(obj),
+        kl = kys.length;
+      for (var j = 0; j < kl; j++) {
+        walkInto(fun, obj, obj[kys[j]], kys[j], (j === (kl - 1)));
+      }
+    }
+  }
+
+  return walkInto;
+})();
+GLOBAL_METHODS.replace = (function() {
+  const START_VAR = '{{',
+    END_VAR = '}}',
+    SVAR_L = 2,
+    EVAR_L = 2,
+    NOT_FOUND_MSG = 'VAR_NOT_FOUND',
+    VAR_REG = /(\{\{[a-zA-Z0-9\$\.\_]+\}\})+/g;
+
+  const WALK_INTO = GLOBAL_METHODS.objwalk,
+    IS_ALPHA_NUM = GLOBAL_METHODS.isAlphaNum,
+    ASSIGN = GLOBAL_METHODS.assign;
+
+  function isWithVars(st) {
+    if (st && typeof st === 'string' && st.length > (END_VAR.length + START_VAR.length)) {
+      var f = st.indexOf(START_VAR),
+        l = st.indexOf(END_VAR);
+      return (f !== -1 && l !== -1) ? [f, l] : false;
+    } else return false;
+  }
+
+  function _noUndefined(st, def) {
+    return st === undefined ? def : st;
+  }
+
+  function getVarVal(varVal, varName, variablesMap) {
+    if (typeof variablesMap !== 'object' || !variablesMap) {
+      return varVal;
+    }
+    if (varName.indexOf('.') !== -1) {
+      var spls = varName.split('.'),
+        ln = spls.length,
+        valFound = true;
+      if (ln) {
+        var base = getVarVal(spls[0], spls[0], variablesMap),
+          curVal;
+        for (var j = 1; j < ln; j++) {
+          if (spls[j].length) {
+            if (typeof base === 'object') {
+              curVal = replace(spls[j], variablesMap);
+              try {
+                base = base[curVal];
+              } catch (erm) {
+                valFound = false;
+              }
+            } else {
+              valFound = false;
+            }
+          }
+        }
+        if (valFound) {
+          return _noUndefined(base, varVal);
+        }
+      }
+    }
+    return variablesMap.hasOwnProperty(varName) ? variablesMap[varName] : _noUndefined(varVal);
+  }
+
+  function extractVars(str) {
+    return str.match(VAR_REG) || [];
+  }
+
+  function extractVarName(variable) {
+    return variable.substring(SVAR_L, variable.length - EVAR_L);
+  }
+
+  function _replace(st, vars) {
+    var replaced, varName, nvars = extractVars(st),
+      reRep = false;
+    for (var i = 0; i < nvars.length; i++) {
+      varName = extractVarName(nvars[i]);
+      replaced = getVarVal(nvars[i], varName, vars);
+      if (st === nvars[i]) return replaced;
+      var rValue = (typeof replaced === 'string') ? replaced : JSON.stringify(replaced);
+      st = st.replace(nvars[i], function() {
+        return rValue;
+      });
+    }
+    return st;
+  }
+
+  function replace(st, vars, ins) {
+    if (typeof st === 'string') {
+      if (typeof vars !== 'object' || !vars) {
+        return st;
+      }
+      if (!(Array.isArray(ins))) {
+        ins = isWithVars(st);
+      }
+      if (!(ins)) {
+        return st;
+      }
+      var reRep = (st.indexOf('.' + START_VAR) !== -1) && (st.indexOf(END_VAR + '.') !== -1);
+      st = _replace(st, vars);
+      if (reRep) {
+        st = _replace(st, vars);
+      }
+    }
+    return st;
+  }
+
+  function handleFunction(inp, vars, methods) {
+    if (typeof methods === 'object' && typeof inp === 'object' && inp && (typeof inp['@'] === 'string') &&
+      IS_ALPHA_NUM(inp['@']) && (typeof methods[inp['@']] === 'function')) {
+      var pms = (typeof inp.params === 'object' && inp.params !== null) ? ASSIGN(false, inp.params) : inp.params;
+      var params = deepReplace(pms, vars, methods);
+      if (!(Array.isArray(params))) {
+        params = [params];
+      }
+      params.unshift(vars, methods);
+      return methods[inp['@']].apply(null, params);
+    }
+    return inp;
+  }
+
+  function deepReplace(input, vars, methods) {
+    if (typeof input !== 'object' || !input) {
+      return replace(input, vars);
+    }
+    input = handleFunction(input, vars, methods);
+    WALK_INTO(function(valn, key, rt) {
+      if (typeof rt === 'object' && rt && typeof rt.hasOwnProperty === 'function' && rt.hasOwnProperty(key)) {
+        var val = rt[key],
+          tmpKy = null,
+          isth = isWithVars(key);
+        if (isth) {
+          tmpKy = replace(key, vars, isth);
+          if (tmpKy !== key) {
+            val = rt[tmpKy] = rt[key];
+            delete rt[key];
+          }
+        }
+        if (typeof val === 'string' && val) {
+          isth = isWithVars(val);
+          if (isth) {
+            rt[tmpKy || key] = replace(val, vars, isth);
+          }
+        } else {
+          rt[tmpKy || key] = handleFunction(val, vars, methods);
+        }
+      }
+    }, null, input);
+    return input;
+  }
+
+  return deepReplace;
+})();
+GLOBAL_METHODS.resolveSlash = (function() {
+  function func(url, ls, rm) {
+    if (typeof url === 'string') {
+      if (ls) {
+        if (rm) {
+          url = url.endsWith('/') ? url.slice(0, -1) : url
+        } else {
+          url = url.endsWith('/') ? url : (url + '/')
+        }
+      } else {
+        if (rm) {
+          url = (url.charAt(0) === '/') ? url.slice(1) : url;
+        } else {
+          url = (url.charAt(0) === '/') ? url : ('/' + url);
+        }
+      }
+    }
+    return url;
+  }
+
+  return func;
+})();
+GLOBAL_METHODS.stringify = (function() {
+  function func(st, pretty) {
+    if (typeof st !== 'string') {
+      if (typeof st === 'object') {
+        try {
+          st = pretty ? JSON.stringify(st, null, '  ') : JSON.stringify(st);
+        } catch (er) {
+          st = String(st);
+        }
+      } else {
+        st = String(st);
+      }
+    }
+    return st;
+  }
+
+  return func;
+})();
+GLOBAL_METHODS.request = (function() {
+  function isObect(ob) {
+    return typeof ob === 'object' && ob !== null && !(Array.isArray(ob));
+  }
+
+  const http = require('http'),
+    urlp = require('url');
+
+  function func(options, cb) {
+    var url, method, payload, headers, toParse;
+    if (typeof cb !== 'function') {
+      cb = function() {};
+    }
+    if (typeof options === 'string') {
+      url = options;
+      method = 'GET';
+      toParse = JSON.parse;
+    } else if (isObect(options)) {
+      url = options.url;
+      method = options.method;
+      payload = options.payload;
+      headers = options.headers;
+      toParse = options.toParse;
+    } else {
+      return cb('INVALID_OPTIONS');
+    }
+    if (typeof url !== 'string' || !url.length) {
+      return cb('URL_NOT_FOUND');
+    }
+    if (typeof method !== 'string' || !method.length) {
+      return cb('METHOD_NOT_FOUND');
+    }
+    var obj = urlp.parse(url);
+    obj.method = method;
+    obj.headers = headers;
+    var req = http.request(obj, function(res) {
+      var resc = '';
+      res.setEncoding('utf8');
+      res.on('data', function(chunk) {
+        resc += chunk;
+      });
+
+      function respond() {
+        var toSend = {
+          statusCode: res.statusCode,
+          headers: res.headers,
+          content: resc,
+        };
+        if (typeof toParse === 'function') {
+          try {
+            toSend.parsed = toParse(resc);
+          } catch (er) {
+            toSend.parseError = er;
+          }
+        }
+        cb(null, toSend);
+      }
+      res.on('error', respond);
+      res.on('end', respond);
+    });
+    if (typeof payload !== undefined) {
+      payload = GLOBAL_METHODS.stringify(payload);
+      req.write(payload);
+    }
+  }
+
+  return func;
+})();
+
 function func(CONFIG_PATH, API_PATH, APP_DIR_PATH) {
   const NodePath = require('path'),
     NodeFs = require('fs');
-  var GLOBAL_METHODS = {},
-    GLOBAL_APP_CONFIG = {},
+  var GLOBAL_APP_CONFIG = {},
     MAINS = {};
-  if (!APP_DIR_PATH) APP_DIR_PATH = process.cwd();
+  if (!APP_DIR_PATH) APP_DIR_PATH = NodePath.join(process.cwd(), 'modules');
   try {
-    GLOBAL_APP_CONFIG = require(CONFIG_PATH || '../../config.json');
+    GLOBAL_APP_CONFIG = require(CONFIG_PATH || '../../j2s.json');
   } catch (erm) {
-    console.log('WARNING : config.json not loaded.');
+    console.log('WARNING : j2s.json not loaded.');
     console.log(erm);
   }
   try {
@@ -18,273 +335,6 @@ function func(CONFIG_PATH, API_PATH, APP_DIR_PATH) {
     console.log(erm);
   }
 
-  GLOBAL_METHODS.assign = (function() {
-    function func(ab, bb, noob) {
-      if (typeof ab !== 'object' || !ab) ab = Array.isArray(bb) ? new Array(bb.length) : {};
-      if (typeof bb === 'object' && bb) {
-        var kys = Object.keys(bb),
-          kl = kys.length;
-        for (var j = 0; j < kl; j++) {
-          if (!noob || (typeof ab[kys[j]] !== 'object') || (typeof bb[kys[j]] !== 'object')) {
-            ab[kys[j]] = bb[kys[j]];
-          }
-        }
-      }
-      return ab;
-    }
-
-    return func;
-  })();
-  GLOBAL_METHODS.isAlphaNum = (function() {
-    function func(st) {
-      return Boolean(!(/[^A-Za-z0-9]/).test(st));
-    }
-
-    return func;
-  })();
-  GLOBAL_METHODS.lastValue = (function() {
-    function loop(inp, key) {
-      if (inp !== undefined && inp !== null) {
-        return inp[key];
-      } else return undefined;
-    }
-
-    function func(root) {
-      var len = arguments.length,
-        now = root;
-      for (var z = 1; z < len; z++) {
-        now = loop(root, arguments[z]);
-        if (now === undefined) {
-          break;
-        } else {
-          root = now;
-        }
-      }
-      return now;
-    }
-
-    return func;
-  })();
-  GLOBAL_METHODS.makemsg = (function() {
-    function func(vars, msgname, args) {
-      var ln = args.length,
-        st = GLOBAL_METHODS.lastValue(vars.locale, vars.currentLocale, msgname);
-      if (st === undefined) return 'LOCALE_MESSAGE_ERROR';
-      for (var vm = 0; vm < ln; vm++) {
-        if (typeof args[vm] === 'function') {
-          return args[vm]({
-            _: st,
-            status: 400
-          });
-        }
-        st = st.replace(('\{\{' + vm + '\}\}'), typeof args[vm] === 'string' ? args[vm] : JSON.stringify(args[vm]));
-      }
-      return st;
-    }
-
-    return func;
-  })();
-  GLOBAL_METHODS.objwalk = (function() {
-    function walkInto(fun, rt, obj, key, isLast) {
-      fun(obj, key, rt, typeof isLast === 'boolean' ? isLast : true);
-      if (typeof obj === 'object' && obj && obj['$W_END'] !== true) {
-        var kys = Object.keys(obj),
-          kl = kys.length;
-        for (var j = 0; j < kl; j++) {
-          walkInto(fun, obj, obj[kys[j]], kys[j], (j === (kl - 1)));
-        }
-      }
-    }
-
-    return walkInto;
-  })();
-  GLOBAL_METHODS.replace = (function() {
-    const START_VAR = '{{',
-      END_VAR = '}}',
-      SVAR_L = 2,
-      EVAR_L = 2,
-      NOT_FOUND_MSG = 'VAR_NOT_FOUND',
-      VAR_REG = /(\{\{[a-zA-Z0-9\$\.\_]+\}\})+/g;
-
-    const WALK_INTO = GLOBAL_METHODS.objwalk,
-      IS_ALPHA_NUM = GLOBAL_METHODS.isAlphaNum,
-      ASSIGN = GLOBAL_METHODS.assign;
-
-    function isWithVars(st) {
-      if (st && typeof st === 'string' && st.length > (END_VAR.length + START_VAR.length)) {
-        var f = st.indexOf(START_VAR),
-          l = st.indexOf(END_VAR);
-        return (f !== -1 && l !== -1) ? [f, l] : false;
-      } else return false;
-    }
-
-    function _noUndefined(st, def) {
-      return st === undefined ? def : st;
-    }
-
-    function getVarVal(varVal, varName, variablesMap) {
-      if (typeof variablesMap !== 'object' || !variablesMap) {
-        return varVal;
-      }
-      if (varName.indexOf('.') !== -1) {
-        var spls = varName.split('.'),
-          ln = spls.length,
-          valFound = true;
-        if (ln) {
-          var base = getVarVal(spls[0], spls[0], variablesMap),
-            curVal;
-          for (var j = 1; j < ln; j++) {
-            if (spls[j].length) {
-              if (typeof base === 'object') {
-                curVal = replace(spls[j], variablesMap);
-                try {
-                  base = base[curVal];
-                } catch (erm) {
-                  valFound = false;
-                }
-              } else {
-                valFound = false;
-              }
-            }
-          }
-          if (valFound) {
-            return _noUndefined(base, varVal);
-          }
-        }
-      }
-      return variablesMap.hasOwnProperty(varName) ? variablesMap[varName] : _noUndefined(varVal);
-    }
-
-    function extractVars(str) {
-      return str.match(VAR_REG) || [];
-    }
-
-    function extractVarName(variable) {
-      return variable.substring(SVAR_L, variable.length - EVAR_L);
-    }
-
-    function _replace(st, vars) {
-      var replaced, varName, nvars = extractVars(st),
-        reRep = false;
-      for (var i = 0; i < nvars.length; i++) {
-        varName = extractVarName(nvars[i]);
-        replaced = getVarVal(nvars[i], varName, vars);
-        if (st === nvars[i]) return replaced;
-        var rValue = (typeof replaced === 'string') ? replaced : JSON.stringify(replaced);
-        st = st.replace(nvars[i], function() {
-          return rValue;
-        });
-      }
-      return st;
-    }
-
-    function replace(st, vars, ins) {
-      if (typeof st === 'string') {
-        if (typeof vars !== 'object' || !vars) {
-          return st;
-        }
-        if (!(Array.isArray(ins))) {
-          ins = isWithVars(st);
-        }
-        if (!(ins)) {
-          return st;
-        }
-        var reRep = (st.indexOf('.' + START_VAR) !== -1) && (st.indexOf(END_VAR + '.') !== -1);
-        st = _replace(st, vars);
-        if (reRep) {
-          st = _replace(st, vars);
-        }
-      }
-      return st;
-    }
-
-    function handleFunction(inp, vars, methods) {
-      if (typeof methods === 'object' && typeof inp === 'object' && inp && (typeof inp['@'] === 'string') &&
-        IS_ALPHA_NUM(inp['@']) && (typeof methods[inp['@']] === 'function')) {
-        var pms = (typeof inp.params === 'object' && inp.params !== null) ? ASSIGN(false, inp.params) : inp.params;
-        var params = deepReplace(pms, vars, methods);
-        if (!(Array.isArray(params))) {
-          params = [params];
-        }
-        params.unshift(vars, methods);
-        return methods[inp['@']].apply(null, params);
-      }
-      return inp;
-    }
-
-    function deepReplace(input, vars, methods) {
-      if (typeof input !== 'object' || !input) {
-        return replace(input, vars);
-      }
-      input = handleFunction(input, vars, methods);
-      WALK_INTO(function(valn, key, rt) {
-        if (typeof rt === 'object' && rt && typeof rt.hasOwnProperty === 'function' && rt.hasOwnProperty(key)) {
-          var val = rt[key],
-            tmpKy = null,
-            isth = isWithVars(key);
-          if (isth) {
-            tmpKy = replace(key, vars, isth);
-            if (tmpKy !== key) {
-              val = rt[tmpKy] = rt[key];
-              delete rt[key];
-            }
-          }
-          if (typeof val === 'string' && val) {
-            isth = isWithVars(val);
-            if (isth) {
-              rt[tmpKy || key] = replace(val, vars, isth);
-            }
-          } else {
-            rt[tmpKy || key] = handleFunction(val, vars, methods);
-          }
-        }
-      }, null, input);
-      return input;
-    }
-
-    return deepReplace;
-  })();
-  GLOBAL_METHODS.resolveSlash = (function() {
-    function func(url, ls, rm) {
-      if (typeof url === 'string') {
-        if (ls) {
-          if (rm) {
-            url = url.endsWith('/') ? url.slice(0, -1) : url
-          } else {
-            url = url.endsWith('/') ? url : (url + '/')
-          }
-        } else {
-          if (rm) {
-            url = (url.charAt(0) === '/') ? url.slice(1) : url;
-          } else {
-            url = (url.charAt(0) === '/') ? url : ('/' + url);
-          }
-        }
-      }
-      return url;
-    }
-
-    return func;
-  })();
-  GLOBAL_METHODS.stringify = (function() {
-    function func(st) {
-      if (typeof st !== 'string') {
-        if (typeof st === 'object') {
-          try {
-            st = JSON.stringify(st);
-          } catch (er) {
-            st = String(st);
-          }
-        } else {
-          st = String(st);
-        }
-      }
-      return st;
-    }
-
-    return func;
-  })();
-
   var GLOBAL_API = require('./defaults.json');
 
   var ASSIGN = GLOBAL_METHODS.assign;
@@ -292,16 +342,15 @@ function func(CONFIG_PATH, API_PATH, APP_DIR_PATH) {
   var lastValue = GLOBAL_METHODS.lastValue;
   var N_REG = GLOBAL_METHODS.isAlphaNum;
 
-  ASSIGN(GLOBAL_API._vars, MAINS._vars, true);
-  ASSIGN(GLOBAL_API._vars.locale.en, lastValue(MAINS, '_vars', 'locale', 'en'));
-  if (typeof MAINS._root === 'object' && MAINS._root) {
-    ASSIGN(GLOBAL_API._root, MAINS._root, true);
-    ASSIGN(GLOBAL_API._root.$, MAINS._root.$);
+  ASSIGN(GLOBAL_API.vars.errors, GLOBAL_METHODS.lastValue(MAINS, 'vars', 'errors'));
+  ASSIGN(GLOBAL_API.vars, MAINS.vars);
+  if (typeof MAINS.root === 'object' && MAINS.root) {
+    ASSIGN(GLOBAL_API.root, MAINS.root);
   }
 
-  REPL(GLOBAL_API, GLOBAL_API._vars);
-  const GLOBAL_VARS = GLOBAL_API._vars;
-  delete GLOBAL_API._vars;
+  REPL(GLOBAL_API, GLOBAL_API.vars);
+  const GLOBAL_VARS = GLOBAL_API.vars;
+  delete GLOBAL_API.vars;
 
   var forOneModule = function(bs) {
     var mods = [];
@@ -311,9 +360,16 @@ function func(CONFIG_PATH, API_PATH, APP_DIR_PATH) {
     try {
       mods = NodeFs.readdirSync(NodePath.join.apply(NodePath, pths.concat(['_methods']))).filter(N_REG);
     } catch (erm) {}
-    var cr = lastValue.apply(lastValue, [GLOBAL_API._root].concat(bs));
+    var cr = lastValue.apply(lastValue, [GLOBAL_API.root].concat(bs));
     if (cr) {
       if (!cr._methods) cr._methods = {};
+      var vrt = false;
+      try {
+        var vrt = require(NodePath.join.apply(NodePath, pths.concat(['vars.json'])));
+      } catch (er) {}
+      if (vrt) {
+        cr._vars = vrt;
+      }
       mods.forEach(function(ms) {
         cr._methods[ms] =
           eval('(function(){' + NodeFs.readFileSync(NodePath.join.apply(NodePath, pths.concat(['_methods', ms, 'index.js'])))
@@ -356,6 +412,23 @@ function func(CONFIG_PATH, API_PATH, APP_DIR_PATH) {
       const IS_ALPHA_NUM = GLOBAL_METHODS.isAlphaNum;
       const S_VARS = JSON.stringify(GLOBAL_VARS);
 
+      function fromSource(src, after) {
+        if (typeof src === 'string' && src.indexOf('http') === 0) {
+          GLOBAL_METHODS.request(src, function(er, obj) {
+            if (er) after(er);
+            else if (typeof obj.statusCode === 'number' && obj.statusCode > 199 && obj.statusCode < 300) {
+              after(null, obj.parsed);
+            } else {
+              after(obj.parsed);
+            }
+          });
+        } else {
+          if (!Array.isArray(src)) {
+            src = [src];
+          }
+          after(null, src);
+        }
+      }
 
       function getNewVars() {
         var cache = JSON.parse(S_VARS);
@@ -366,6 +439,14 @@ function func(CONFIG_PATH, API_PATH, APP_DIR_PATH) {
         if (typeof cache.params.header !== 'object' || cache.params.header === null) cache.params.header = {};
         if (!(Array.isArray(cache.params.file))) cache.params.file = [];
         return cache;
+      }
+
+      function register(ob, req, ev, call, modev) {
+        if (typeof ev !== 'string') return;
+        ev = ev.trim();
+        if (!ev.length) return;
+        if (typeof modev === 'function') ev = modev(ev);
+        req.on(ev, call);
       }
 
       var forOneObj = function(rq, rs, cache, methods, ob) {
@@ -395,10 +476,7 @@ function func(CONFIG_PATH, API_PATH, APP_DIR_PATH) {
                 cl(pluskeys[n], vl[pluskeys[n]]);
                 if (typeof vl[pluskeys[n]].on === 'string' && vl[pluskeys[n]].on.length) {
                   evaluate(rq, rs, cache, methods, vl[pluskeys[n]].on).split(',').forEach(function(ev) {
-                    ev = ev.trim();
-                    if (ev.length) {
-                      rq.on(ev, cl.bind(null, pluskeys[n], vl[pluskeys[n]]));
-                    }
+                    register(vl[pluskeys[n]], rq, ev, cl.bind(null, pluskeys[n], vl[pluskeys[n]]));
                   });
                 }
               }
@@ -488,12 +566,23 @@ function func(CONFIG_PATH, API_PATH, APP_DIR_PATH) {
         return false;
       };
 
+      function rectify(obj, cache, methods) {
+        var ob;
+        if (typeof obj === 'object' && obj !== null) {
+          ob = GLOBAL_METHODS.assign(undefined, obj);
+        } else {
+          ob = obj;
+        }
+        ob = GLOBAL_METHODS.replace(ob, cache, methods);
+        return ob;
+      }
+
       function evaluate(req, res, cache, methods, obj, next) {
         if (res.responded) return;
         var isAsync = typeof next === 'function',
           isFunc = false,
           pms = [];
-        if (typeof obj['@'] === 'string') {
+        if (obj && typeof obj['@'] === 'string') {
           isFunc = obj['@'];
           if (typeof methods[isFunc] !== 'function') {
             isFunc = GLOBAL_METHODS.replace(obj['@'], cache, methods);
@@ -529,8 +618,7 @@ function func(CONFIG_PATH, API_PATH, APP_DIR_PATH) {
               'params': pms
             }, cache, methods);
           } else {
-            obj = GLOBAL_METHODS.assign({}, obj);
-            next(GLOBAL_METHODS.replace(obj, cache, methods));
+            next(rectify(obj, cache, methods));
           }
         } else {
           var ob;
@@ -541,12 +629,7 @@ function func(CONFIG_PATH, API_PATH, APP_DIR_PATH) {
             };
             ob = GLOBAL_METHODS.replace(ob, cache, methods);
           } else {
-            if (typeof obj === 'object' && obj !== null) {
-              ob = GLOBAL_METHODS.assign({}, obj);
-            } else {
-              ob = obj;
-            }
-            ob = GLOBAL_METHODS.replace(ob, cache, methods);
+            ob = rectify(obj, cache, methods);
           }
           return ob;
         }
@@ -587,12 +670,23 @@ function func(CONFIG_PATH, API_PATH, APP_DIR_PATH) {
           var af = function(dt, num, noev) {
             var nxt = next;
             if (res.responded) return;
+            cache.currentData = dt;
             return evaluate(req, res, cache, methods, ml, nxt);
           };
           if (ml && typeof ml.once === 'string') {
             req.once(ml.once, af);
           } else {
-            return af();
+            if (ml.from !== undefined) {
+              fromSource(evaluate(req, res, cache, methods, ml.from), function(er, data) {
+                if (er || !data) {
+                  af(er || 'Record not found.', 400);
+                } else {
+                  af(data);
+                }
+              });
+            } else {
+              return af();
+            }
           }
         };
         var notFoundCode = '404';
@@ -624,10 +718,16 @@ function func(CONFIG_PATH, API_PATH, APP_DIR_PATH) {
             case 'GET':
               var nw = curr['$'] || curr['$get'];
               if (nw) {
-                var kn = nw['$>'];
-                if (kn) kn = evaluate(req, res, cache, methods, kn);
-                if (typeof kn === 'string' && curr[kn]) {
-                  return evaling(curr[kn]);
+                var isAny = false,
+                  kn = nw['$>'];
+                if (kn) {
+                  kn = evaluate(req, res, cache, methods, kn);
+                  isAny = (Object.keys(curr).filter(function(ab) {
+                    return ab.charAt(0) === ':';
+                  }).length > 0);
+                }
+                if (typeof kn === 'string' && (curr[kn] || isAny)) {
+                  return resp(method, curr[kn], req, res, cache, methods);
                 } else {
                   return evaling(nw);
                 }
@@ -645,32 +745,72 @@ function func(CONFIG_PATH, API_PATH, APP_DIR_PATH) {
         next(evaling(cache.errors[notFoundCode]));
       }
 
+      var staticServer = false;
+      if (process.env.STATIC_DIR) {
+        GLOBAL_APP_CONFIG.staticDir = process.env.STATIC_DIR;
+      }
+      if (process.env.MOUNT_PATH) {
+        GLOBAL_APP_CONFIG.mountPath = process.env.MOUNT_PATH;
+      }
+      if (typeof GLOBAL_APP_CONFIG.staticDir === 'string') {
+        try {
+          staticServer = new(require('node-static')).Server(require('path').join(process.cwd(), GLOBAL_APP_CONFIG.staticDir));
+        } catch (err) {
+          console.log('To have static server enabled. You need to run `npm install node-static`');
+          console.log(err);
+        }
+      }
+
+      function serverStatic(req, res) {
+        req.addListener('end', function() {
+          staticServer.serve(req, res, function(err, result) {
+            if (err) {
+              console.error("Error serving " + req.url + " - " + err.message);
+              res.writeHead(err.status, err.headers);
+              res.end();
+            }
+          });
+        }).resume();
+      }
+
       function handler(req, res) {
-        var parsed = req.parsedUrl,
-          curr, vl, notFound = false;
-        var paths = parsed.pathname.substring(1).split('/'),
-          pl = paths.length;
         req['$W_END'] = true;
         res['$W_END'] = true;
+        var parsed = req.parsedUrl,
+          curr, vl, notFound = false,
+          pthn = parsed.pathname;
         var cache = getNewVars(),
           methods = {};
+        GLOBAL_METHODS.assign(methods, GLOBAL_METHODS);
+        if (typeof GLOBAL_APP_CONFIG.mountPath === 'string') {
+          if (pthn.indexOf(GLOBAL_APP_CONFIG.mountPath) !== 0) {
+            return resp(false, curr, req, res, cache, methods);
+          } else {
+            pthn = GLOBAL_METHODS.resolveSlash(pthn.substring(GLOBAL_APP_CONFIG.mountPath.length));
+          }
+        }
+        var paths = pthn.substring(1).split('/'),
+          pl = paths.length;
+        if (staticServer && paths[pl - 1].indexOf('.') !== -1) {
+          return serverStatic(req, res);
+        }
         req.once('respondNow', function(vlm, st) {
           sendNow(cache.defKey, req, res, evaluate(req, res, cache, methods, vlm), st);
         });
-        GLOBAL_METHODS.assign(methods, GLOBAL_METHODS);
-        curr = forOneObj(req, res, cache, methods, GLOBAL_API._root), vl = GLOBAL_API._root;
-        var exitGate = GLOBAL_METHODS.lastValue(GLOBAL_API._root, '_methods', 'exitGate');
-        res.exitGate = exitGate === 'function' ? exitGate.bind(res, cache, methods, req, res) : function() {};
+        curr = forOneObj(req, res, cache, methods, GLOBAL_API.root), vl = GLOBAL_API.root;
+        var exitGate = GLOBAL_METHODS.lastValue(GLOBAL_API.root, '_methods', 'exitGate');
+        res.exitGate = typeof exitGate === 'function' ? exitGate.bind(res, cache, methods, req, res) : function() {};
         var method = req.method,
           notFound = GLOBAL_METHODS.lastValue.apply(undefined, [GLOBAL_APP_CONFIG].concat(paths.concat(['enable']))) === false;
         if (paths[0] !== '' && !(notFound)) {
           for (var prk, z = 0; z < pl; z++) {
             prk = paths[z];
+            if (prk === '') {
+              method = '>';
+              break;
+            }
             if (curr) {
-              if (prk === '') {
-                method = '>';
-                break;
-              } else if (curr[1].indexOf(prk) !== -1) {
+              if (curr[1].indexOf(prk) !== -1) {
                 vl = curr[0][prk];
               } else if (curr[2]) {
                 cache.params.path[curr[2]] = prk;
@@ -701,7 +841,7 @@ function func(CONFIG_PATH, API_PATH, APP_DIR_PATH) {
           vlk = Object.keys(vl),
           vlkl = vlk.length;
         for (var z = 0; z < vlkl; z++) {
-          if (vlk[z].charAt(0) === '$') {
+          if (vlk[z].charAt(0) === '$' || vlk[z].charAt(0) === '>') {
             nf = false;
             break;
           }
@@ -716,9 +856,9 @@ function func(CONFIG_PATH, API_PATH, APP_DIR_PATH) {
   return {
     api: GLOBAL_API,
     config: GLOBAL_APP_CONFIG,
-    methods: GLOBAL_METHODS,
     start: startServer
   };
 }
 
 module.exports = func;
+module.exports.methods = GLOBAL_METHODS;

@@ -1,59 +1,43 @@
 {
-  "name" : "{{name}}",
-  "version" : "{{version}}",
-  "_vars" : {
+  "vars" : {
+    "app":{
+      "name" : "json2server",
+      "version" : "0.0.1"
+    },
     "errors" :{
       "500" : {
-        "{{defKey}}" : "{{locale.{{currentLocale}}.500}}",
-        "requestId" : "{{requestId}}",
+        "{{defKey}}":"An unknown error has been occurred. Please contact us at {{supportEmail}}",
         "status" : 500
       },
       "408" : {
-        "{{defKey}}" : "{{locale.{{currentLocale}}.408}}",
-        "requestId" : "{{requestId}}",
+        "{{defKey}}" : "It taking huge time to evaluate request. Time out. Aborted.",
         "status" : 408
       },
       "404" : {
-        "{{defKey}}" : "{{locale.{{currentLocale}}.404}}",
-        "requestId" : "{{requestId}}",
+        "{{defKey}}" : "Invalid request route.",
         "status" : 404
       },
       "400" : {
-        "{{defKey}}" : "{{locale.{{currentLocale}}.400}}",
-        "requestId" : "{{requestId}}",
+        "{{defKey}}" : "Invalid inputs.",
         "status" : 400
       },
       "405" : {
-        "{{defKey}}" : "{{locale.{{currentLocale}}.405}}",
-        "requestId" : "{{requestId}}",
+        "{{defKey}}" : "Method not allowed.",
         "status" : 405
       },
       "inval" : {
-        "{{defKey}}" : "{{locale.{{currentLocale}}.invalidparams}}",
-        "requestId" : "{{requestId}}",
+        "{{defKey}}" : "Request parameter was invalid.",
         "status" : 400
       }
     },
     "supportEmail" : "support@yourdomain.com",
-    "name" : "servername",
     "defTimeout":18000,
-    "defKey" : "_",
-    "version" : "0.0.1",
-    "locale":{
-      "en":{
-        "500" : "An unknown error has been occurred. Please contact us at {{supportEmail}} with request id {{requestId}}",
-        "408" : "It taking huge time to evaluate request. Time out. Aborted.",
-        "404" : "Invalid request route.",
-        "405" : "Method not allowed.",
-        "400" : "Invalid inputs.",
-        "invalidparams" : "Request parameter was invalid."
-      }
-    }
+    "defKey" : "_"
   },
-  "_root" : {
+  "root" : {
     "$" : {
-      "name" : "{{name}}",
-      "version" : "{{version}}"
+      "name" : "{{app.name}}",
+      "version" : "{{app.version}}"
     }
   }
 }
