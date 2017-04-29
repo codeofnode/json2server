@@ -22,23 +22,17 @@ $ npm install [-g] json2server
 
 ```
 $ npm install -g json2server
-$ cd /directory/where/api_dot_json/exists
-$ json2server // for single combined file, useful for prod
-$ KEEP_STRUCTURE=true json2server //  leaving directory structure as it, useful for dev
-$ node index.js
+$ json2server // run instant server in current directory
+$ json2server --outfile=true // to build and generate a server file
+$ json2server --browser=true // to build and generate a client file
 ```
-### As local module
 
-```
-$ cd /directory/where/api_dot_json/exists
-$ npm install json2server
-$ node node_modules/json2server/create
-$ node server.js
-```
+## more options
+[See this file](https://github.com/codeofnode/json2server/blob/master/internal_methods/extractArgs.js)
 
 ## Documentation
 
-[Documentation about server.json and points to keep in mind](https://github.com/codeofnode/json2server/blob/master/DOC.md)
+[Documentation about server.json/client and points to keep in mind](https://github.com/codeofnode/json2server/blob/master/DOC.md)
 
 ## License
 
