@@ -1,0 +1,218 @@
+#! /usr/bin/env node
+
+var options = require('./../internal_methods/extractArgs')('json2server','Build your server/client with a json file', []);
+const ASSIGN = require('./../common_methods/assign')(require);
+const NodeFs = require('fs');
+const Iterate = require('./../internal_methods/iterateRecursive');
+const CreateMethod = require('./../internal_methods/createMethodFile');
+const struct = require('./../internal_methods/makeStruct');
+const ReadFromFile = require('./../internal_methods/readFromFile');
+const N_REG = require('./../common_methods/isAlphaNum')(require);
+const lastValue = require('./../common_methods/lastValue')(require);
+const objWalk = require('./../common_methods/objwalk')(require);
+const REPL = require('./../common_methods/replace')(require,{},{
+  objwalk : objWalk, isAlphaNum : N_REG, assign : ASSIGN });
+
+var mainFile = require('./../index');
+
+var isBrowser = Boolean(options.browser);
+if(isBrowser){
+  if(!options.outfile){
+    if(typeof options.browser === 'string'){
+      options.outfile = options.browser;
+    } else {
+      options.outfile = true;
+    }
+  }
+}
+
+var conf = {};
+try {
+  conf = require(options.configpath || (process.cwd()+'/'+(isBrowser ? 'j2c.json' : 'j2s.json')));
+} catch(er){ console.log(er); }
+if(options.staticdir || options.port || options.mountpath){
+  if(options.port) conf.port = options.port;
+  if(options.staticdir) conf.staticdir = options.staticdir;
+  if(options.mountpath) conf.mountpath = options.mountpath;
+}
+
+var FILE_STR = [], FileArr = NodeFs.readFileSync(__dirname+'/../index.js').toString().split('\n');
+var serverFlag = false, notInFile = false;
+
+if(options.start || (!options.outfile && !options.struct && !options.browser)){
+  return mainFile(conf,options.jsonpath,options.rootdir)();
+}
+
+if(options.struct){
+  var ModuleDir;
+  if(typeof options.struct !== 'string'){ ModuleDir = typeof options.rootdir || 'root'; }
+  else ModuleDir = options.struct;
+  struct(ModuleDir,options.jsonpath,options.outfile);
+}
+
+function requireReplacement(line){
+  return line.replace('client_server/server', 'client_server/client').replace('server_methods','client_methods');
+}
+
+function _String(inp){
+  if(typeof inp === 'string') return inp;
+  if(typeof inp === 'object') return JSON.stringify(inp);
+  if(typeof inp === 'function') return String(inp);
+}
+
+function forOneLine(line){
+  var reqin = line.indexOf('require(\'./');
+  if(options.outfile){
+    if(reqin !== -1 && notInFile !== true){
+      reqin += 11;
+      var filePath = '/../', org = './', chr = line.charAt(reqin);
+      while(chr !== "'"){
+        filePath += chr;
+        org += chr;
+        chr = line.charAt(++reqin);
+      }
+      if(isBrowser) {
+        if(line.indexOf('require') !== -1){
+          line = line.replace('require(\''+org+'\')(require',function(){ return '('+_String(require(__dirname+requireReplacement(filePath)))+')(window'; });
+        }
+      }
+      line = line.replace('require(\''+org+'\')',function(){
+        return '('+_String(require(__dirname+(isBrowser ? requireReplacement(filePath) : filePath)))+')';
+      });
+    } else if(line.indexOf('REQUIRE_MODULE') !== -1){
+      line = 'cr._methods[ms] = \'(\'+String(func)+\')('+(isBrowser?'window':'require')+',GLOBAL_APP_CONFIG,GLOBAL_METHODS)\';';
+    } else if(isBrowser && line.indexOf('CLIENT_METHODS_BLOCK') !== -1){
+      CreateMethod('client',true).split('\n').forEach(function(ab){
+        if(ab.indexOf('request') === -1){
+          forOneLine(ab);
+        }
+      });
+    } else if(line.indexOf('Object.freeze') !== -1){
+      if(line.indexOf('METHODS') !== -1 || line.indexOf('VARS')){
+        return;
+      }
+    } else if(line.indexOf('REQUIRE_VARS') !== -1){
+      line = 'cr._vars = JSON.stringify(vrt);';
+    } else if(line.indexOf('END_NOT_IN_FILE') !== -1){
+      notInFile = false;
+    } else if(line.indexOf('_NOT_IN_FILE') !== -1){
+      notInFile = true;
+    } else if((line.indexOf('END_NO_OUT_FILE') !== -1) || ((isBrowser && line.indexOf('_ONLY_SERVER_END') !== -1))){
+      serverFlag = false;
+    } else if((line.indexOf('NO_OUT_FILE') !== -1) || ((isBrowser && line.indexOf('_ONLY_SERVER') !== -1))){
+      serverFlag = true;
+    } else if(isBrowser) {
+      if(line.indexOf('SERVER(require') !== -1){
+        line = line.replace('SERVER(require','SERVER(window');
+      } else if(line.indexOf('HANDLER(require') !== -1){
+        line = line.replace('HANDLER(require','HANDLER(window');
+      } else if(line.indexOf('HANDLER)(require') !== -1){
+        line = line.replace('HANDLER)(require','HANDLER)(window');
+      } else {
+        var clIn = line.indexOf('//FOR_CLIENT');
+        if(clIn !== -1){
+          var eqIn = line.indexOf('=');
+          if(eqIn !== -1){
+            eqIn++;
+            var nln = '', chr = line.charAt(eqIn);
+            while(chr !== ";"){
+              nln += chr;
+              chr = line.charAt(++eqIn);
+            }
+          }
+        }
+      }
+    }
+    if(notInFile !== true && serverFlag !== true){
+      FILE_STR.push(line);
+    }
+  }
+};
+if(options.outfile){
+  var MAINS = {}, fromJsonReq = (process.cwd()+'/'+ (isBrowser ? 'client.json' : 'server.json'));
+  if(typeof options.jsonpath === 'string' && options.jsonpath.length){
+    fromJsonReq = options.jsonpath;
+  }
+  try {
+    fromJsonReq = require(fromJsonReq);
+  } catch(er){
+    console.log('WARNING : json not loaded.');
+    console.log(er);
+    fromJsonReq = {};
+  }
+
+  ASSIGN(MAINS, fromJsonReq);
+
+  var GLOBAL_API = require('./../defaults.json');
+
+  ASSIGN(GLOBAL_API.vars.errors,lastValue(MAINS,'vars','errors'));
+  ASSIGN(GLOBAL_API.vars.app,lastValue(MAINS,'vars','app'));
+  ASSIGN(GLOBAL_API.vars,MAINS.vars);
+  if(typeof MAINS.root === 'object' && MAINS.root){
+    ASSIGN(GLOBAL_API.root,MAINS.root);
+  }
+
+  REPL(GLOBAL_API,GLOBAL_API.vars);
+  GLOBAL_VARS = GLOBAL_API.vars;
+  delete GLOBAL_API.vars;
+  if(isBrowser){
+    FILE_STR.push('var GLOBAL_VARS='+JSON.stringify(GLOBAL_VARS)+';');
+  }
+}
+
+FileArr.forEach(function(line){
+  forOneLine(line);
+});
+
+function getLeftAndRightForIterate(pth){
+  var lns = pth.slice(1), lnm = lns.length, lfar = [], rfar = [];
+  for(var vl, z = 0; z < lnm; z++){
+    vl = lns[z].trim();
+    if(vl.length){
+      lfar.push(vl);
+      rfar.push("'"+vl+"'");
+    }
+  }
+  return [lfar,rfar];
+}
+
+if(options.outfile){
+  PAP=['var GLOBAL_API = '+JSON.stringify(GLOBAL_API)+';GLOBAL_APP_CONFIG='+JSON.stringify(conf)+';'];
+
+  var ROOT_DIR_PATH = options.rootdir;
+  if (!ROOT_DIR_PATH) ROOT_DIR_PATH = require('path').join(process.cwd(),isBrowser?'client_root':'root');
+  if(options.outfile === 'true'){
+    options.outfile = true;
+  }
+  Iterate(function(bs){
+    return lastValue.apply(lastValue, [GLOBAL_API.root].concat(bs));
+  }, ROOT_DIR_PATH, function(cr,ms,func,pth){
+    var itrs = getLeftAndRightForIterate(pth);
+    PAP.push('GLOBAL_METHODS.makeToLast(GLOBAL_API.root, '+itrs[1].join(',')+');');
+    if(itrs[0].length){
+      var nowFunc = String(func);
+      if(nowFunc.indexOf('READ_FROM_FILE') !== -1){
+        var vrt = {};
+        try {
+          vrt = require(require('path').join.apply(require('path'), pth.concat(['vars.json'])));
+        }catch(erm){
+        }
+        nowFunc =
+        ReadFromFile(nowFunc,require('path').join.apply(require('path'), pth),vrt,ASSIGN,GLOBAL_VARS,REPL);
+      }
+      PAP.push('GLOBAL_API.root.'+itrs[0].join('.')+'=('+nowFunc+')('+(isBrowser ? 'window' : 'require')+',GLOBAL_APP_CONFIG, GLOBAL_METHODS);');
+    }
+  }, function(cr,vrt,pths){
+    var ls = '', itrs = getLeftAndRightForIterate(pths.slice(-1));
+    if(itrs[0].length){
+      ls = ('.'+ itrs[0].join('.'));
+    }
+    PAP.push('GLOBAL_API.root'+ls+'._vars='+JSON.stringify(vrt)+';');
+  }, N_REG);
+
+  FILE_STR.push(PAP.join('\n')+'func(undefined,undefined,undefined,'+
+        (isBrowser ? 'GLOBAL_VARS' : JSON.stringify(GLOBAL_VARS))+',GLOBAL_API)();');
+  NodeFs.writeFileSync(((typeof options.outfile === 'string' && options.outfile.length) ? options.outfile : (require('path').join(process.cwd(), isBrowser ? 'client.js' : 'server.js'))),
+      FILE_STR.join('\n'));
+  process.exit(0);
+}

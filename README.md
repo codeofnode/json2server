@@ -38,7 +38,7 @@ $ node server.js
 
 ## Documentation
 
-[Documentation about api.json and points to keep in mind](https://github.com/codeofnode/json2server/blob/master/DOC.md)
+[Documentation about server.json and points to keep in mind](https://github.com/codeofnode/json2server/blob/master/DOC.md)
 
 ## License
 
