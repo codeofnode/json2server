@@ -45,7 +45,7 @@ if(options.start || (!options.outfile && !options.struct && !options.browser)){
 
 if(options.struct){
   var ModuleDir;
-  if(typeof options.struct !== 'string'){ ModuleDir = typeof options.rootdir || 'root'; }
+  if(typeof options.struct !== 'string'){ ModuleDir = options.rootdir || 'root'; }
   else ModuleDir = options.struct;
   struct(ModuleDir,options.jsonpath,options.outfile);
 }

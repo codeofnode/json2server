@@ -15,8 +15,7 @@ var kys = ['+','=','$', '$get', '$post', '$put', '$delete', '$options', '>', '$p
 
 module.exports = function(ModuleDir,apiFile, startFile){
 
-  if(!apiFile) apiFile = 'server.json';
-  apiFile = require('path').join(process.cwd(),apiFile);
+  if(!apiFile) apiFile = require('path').join(process.cwd(),'server.json');
   var MAINS = require(apiFile);
 
   GLOBAL_METHODS.replace(MAINS.vars, MAINS.vars);
@@ -32,8 +31,12 @@ module.exports = function(ModuleDir,apiFile, startFile){
     var pths = [ModuleDir];
     if(!(Array.isArray(bs))) bs = [];
     pths = pths.concat(bs);
+    var ls = Object.assign([],pths);
+    if(ls[ls.length-1] && ls[ls.length-1].charAt(0) === ':'){
+      ls[ls.length-1] = ls[ls.length-1].substring(1);
+    }
     try {
-      fs.mkdirSync(path.join.apply(path, pths.concat(['_methods'])));
+      fs.mkdirSync(path.join.apply(path, ls.concat(['_methods'])));
     } catch(erm){
     }
     var toCreateMethods = [];
@@ -49,33 +52,44 @@ module.exports = function(ModuleDir,apiFile, startFile){
       if(doneMap[ky]) return;
       doneMap[ky]=true;
       try {
-        fs.mkdirSync(path.join.apply(path, pths.concat(['_methods', ky])));
+        fs.mkdirSync(path.join.apply(path, ls.concat(['_methods', ky])));
       } catch(erm){
       }
     });
     toCreateMethods.forEach(function(ky){
-      var ph =path.join.apply(path, pths.concat(['_methods', ky, 'index.js']));
+      var ph =path.join.apply(path, ls.concat(['_methods', ky, 'index.js']));
       if(!(fs.existsSync(ph))) {
         try {
-          fs.writeFileSync(ph, 'module.exports = function(require, GLOBAL_APP_CONFIG,GLOBAL_METHODS){\n\nfunction func(vars,methods,req,res){\n\n}\n\nmodule.exports = func; }');
+          fs.writeFileSync(ph, 'module.exports = function(require, GLOBAL_APP_CONFIG,GLOBAL_METHODS){\n\nfunction func(vars,methods,req,res){\n\n}\n\nreturn func;\n\n}\n');
         } catch(erm){
         }
       }
     });
-    var ms = [];
+    var ms = [],_ms = {};
     pths.shift();
+    ls.shift();
+    var nls = Object.assign([],ls);
     try {
-      ms = Object.keys(GLOBAL_METHODS.lastValue.apply(null, [MAINS.root].concat(pths))).filter(N_REG);
+      Object.keys(GLOBAL_METHODS.lastValue.apply(null, [MAINS.root].concat(nls))).forEach(function(m){
+        var _m = m;
+        if(m.charAt(0) === ':'){
+          m = m.substring(1);
+        }
+        if(N_REG(m)){
+          ms.push(m);
+          _ms[m] = _m;
+        }
+      });
     } catch(erm){
       return;
     }
-    ms.forEach(function(ms){
-      if(typeof ms ==='string' && N_REG(ms) && isNaN(Number(ms))){
+    ms.forEach(function(mt){
+      if(typeof mt ==='string' && isNaN(Number(mt))){
         try {
-          fs.mkdirSync(path.join.apply(path, [ModuleDir].concat(pths).concat([ms])));
+          fs.mkdirSync(path.join.apply(path, [ModuleDir].concat(ls).concat([mt])));
         } catch(erm){
         }
-        forOneModule(pths.concat([ms]));
+        forOneModule(pths.concat([_ms[mt]]));
       }
     });
   };
