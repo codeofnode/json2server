@@ -33,6 +33,10 @@ module.exports = function(what,desc,helpar){
       case '--outfile':
         if(value){ options.outfile = value === true ? value : path.join(cwd,value); }
         break;
+      case '-v':
+      case '--buildvars':
+        if(typeof value === 'string'){ options.buildvars = path.join(cwd,value); }
+        break;
       case '-b':
       case '--browser':
         if(value){ options.browser = value === true ? value : path.join(cwd,value); }

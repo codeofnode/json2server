@@ -36,6 +36,14 @@ if(options.staticdir || options.port || options.mountpath){
   if(options.mountpath) conf.mountpath = options.mountpath;
 }
 
+var BuildVars = {};
+if(options.buildvars){
+  try {
+    BuildVars = require(options.buildvars);
+  } catch(erm){
+  }
+}
+
 var FILE_STR = [], FileArr = NodeFs.readFileSync(__dirname+'/../index.js').toString().split('\n');
 var serverFlag = false, notInFile = false;
 
@@ -177,13 +185,14 @@ function getLeftAndRightForIterate(pth){
 }
 
 if(options.outfile){
-  PAP=['var GLOBAL_API = '+JSON.stringify(GLOBAL_API)+';GLOBAL_APP_CONFIG='+JSON.stringify(conf)+';'];
+  PAP=['var GLOBAL_API = '+JSON.stringify(GLOBAL_API)+';GLOBAL_METHODS.assign(GLOBAL_APP_CONFIG,'+JSON.stringify(conf)+');'];
 
   var ROOT_DIR_PATH = options.rootdir;
   if (!ROOT_DIR_PATH) ROOT_DIR_PATH = require('path').join(process.cwd(),isBrowser?'client_root':'root');
   if(options.outfile === 'true'){
     options.outfile = true;
   }
+  var htmlReplaceVars = ASSIGN({},BuildVars,GLOBAL_VARS);
   Iterate(function(bs){
     return lastValue.apply(lastValue, [GLOBAL_API.root].concat(bs));
   }, ROOT_DIR_PATH, function(cr,ms,func,pth){
@@ -198,7 +207,7 @@ if(options.outfile){
         }catch(erm){
         }
         nowFunc =
-        ReadFromFile(nowFunc,require('path').join.apply(require('path'), pth),vrt,ASSIGN,GLOBAL_VARS,REPL);
+        ReadFromFile(nowFunc,require('path').join.apply(require('path'), pth),vrt,ASSIGN,htmlReplaceVars,REPL);
       }
       PAP.push('GLOBAL_API.root.'+itrs[0].join('.')+'=('+nowFunc+')('+(isBrowser ? 'window' : 'require')+',GLOBAL_APP_CONFIG, GLOBAL_METHODS);');
     }
