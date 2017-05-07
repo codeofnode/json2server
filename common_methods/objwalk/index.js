@@ -1,5 +1,5 @@
 
-module.exports = function(require, GLOBAL_APP_CONFIG,GLOBAL_METHODS){
+module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
 
   function walkInto(fun, rt, obj, key, isLast){
     fun(obj, key, rt, typeof isLast === 'boolean' ? isLast : true);

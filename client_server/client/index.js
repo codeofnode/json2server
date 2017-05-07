@@ -1,7 +1,7 @@
-module.exports = function(require,GLOBAL_APP_CONFIG,GLOBAL_METHODS){
+module.exports = function(GLOBAL_APP_CONFIG,GLOBAL_METHODS){
   var mainHandler = false;
 
-  var MAIN_CONT_ID = 'main-content-block';
+  var MAIN_CONT_ID = GLOBAL_APP_CONFIG.mainContentBlockId || 'main-content-block';
 
   var ReqResMap = {
   };
@@ -15,9 +15,9 @@ module.exports = function(require,GLOBAL_APP_CONFIG,GLOBAL_METHODS){
     }
   }
 
-  require.topath = function(route,title,data,handle){
+  window.topath = function(route,title,data,handle){
     if(typeof route === 'string'){
-      require.history.pushState(data, title, route);
+      window.history.pushState(data, title, route);
     }
     var ar = getNewReqRes(location.pathname);
     GLOBAL_METHODS.hideAllChildren(document.getElementById(MAIN_CONT_ID));
@@ -26,7 +26,8 @@ module.exports = function(require,GLOBAL_APP_CONFIG,GLOBAL_METHODS){
     return false;
   };
 
-  require.r2 = topath;
+  window.r2 = window.topath;
+  GLOBAL_METHODS.topath = window.topath;
 
   var eventer = GLOBAL_METHODS.eventer();
 
@@ -76,9 +77,9 @@ module.exports = function(require,GLOBAL_APP_CONFIG,GLOBAL_METHODS){
     }
   };
 
-  function server(handler){
+  function server(handler,config,GLOBAL_API){
     if(!mainHandler) mainHandler = handler;
-    topath();
+    window.topath();
   };
 
   return server;

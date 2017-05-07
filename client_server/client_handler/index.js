@@ -1,8 +1,6 @@
-module.exports = function(require, GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL_API) {
+module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL_API) {
   const IS_ALPHA_NUM = GLOBAL_METHODS.isAlphaNum;
   var S_VARS = GLOBAL_VARS;
-
-  require.GlobalStore = GLOBAL_METHODS.store();
 
   function fromSource(src, after) {
     if (typeof src === 'string') {
@@ -63,14 +61,16 @@ module.exports = function(require, GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VAR
           var pluskeys = Object.keys(vl),
             pl = pluskeys.length;
 
-          function cl(ky, dt) {
-            cache[ky] = evaluate(rq, rs, cache, methods, dt);
+          function cl(ky, dt, ifv) {
+            if (ifv === undefined || doEval(rq, rs, cache, methods, ifv, true)) {
+              cache[ky] = evaluate(rq, rs, cache, methods, dt);
+            }
           }
           for (var n = 0; n < pl; n++) {
-            cl(pluskeys[n], vl[pluskeys[n]]);
+            cl(pluskeys[n], vl[pluskeys[n]], vl[pluskeys[n]].if);
             if (typeof vl[pluskeys[n]].on === 'string' && vl[pluskeys[n]].on.length) {
               evaluate(rq, rs, cache, methods, vl[pluskeys[n]].on).split(',').forEach(function(ev) {
-                register(vl[pluskeys[n]], rq, ev, cl.bind(null, pluskeys[n], vl[pluskeys[n]]));
+                register(vl[pluskeys[n]], rq, ev, cl.bind(null, pluskeys[n], vl[pluskeys[n]], vl[pluskeys[n]].if));
               });
             }
           }
@@ -89,18 +89,7 @@ module.exports = function(require, GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VAR
               var ch = function(vl1, vl2, ps) {
                 if (!vl2) vl2 = cache.errors.inval;
                 if (ps) {
-                  var er = evaluate(rq, rs, cache, methods, vl1);
-                  if (er) {
-                    if (typeof er === 'string') {
-                      try {
-                        er = eval(er);
-                      } catch (erm) {
-                        ps = false
-                      }
-                    }
-                  } else {
-                    ps = false;
-                  }
+                  var er = doEval(rq, rs, cache, methods, vl1, true);
                   if (!ps || !er) {
                     ps = false;
                     sendNow(cache.defKey, rq, rs, evaluate(rq, rs, cache, methods, vl2), 400);
@@ -139,7 +128,9 @@ module.exports = function(require, GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VAR
             }
             if (IS_ALPHA_NUM(ky)) {
               if (vr) {
-                res['$'] = ky
+                res['$'] = ky;
+                GLOBAL_METHODS.assign(ob[':' + ky], ob[ky]);
+                delete ob[ky];
               }
               res[ky] = vl;
             }
@@ -157,6 +148,18 @@ module.exports = function(require, GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VAR
     }
     return false;
   };
+
+  function doEval(req, res, cache, methods, obj, bool, nocall) {
+    var ret = obj;
+    if (true) {
+      try {
+        ret = eval(nocall ? obj : evaluate(req, res, cache, methods, obj));
+      } catch (erm) {
+        if (bool) return false;
+      }
+    }
+    return bool ? Boolean(ret) : ret;
+  }
 
   function rectify(obj, cache, methods) {
     var ob;
@@ -284,7 +287,7 @@ module.exports = function(require, GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VAR
     if (['$', '>', 'GET'].indexOf(method) !== -1) {
       if (typeof cache.timeout === 'number') {
         setTimeout(function() {
-          next(evaling(cache.errors['408']));
+          evaling(cache.errors['408']);
         }, cache.timeout);
       }
       switch (method) {
@@ -303,7 +306,7 @@ module.exports = function(require, GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VAR
               }).length > 0);
             }
             if (typeof kn === 'string' && (curr[kn] || isAny)) {
-              return require.topath((req.parsedUrl.pathname.length > 1 ? req.parsedUrl.pathname : '') + '/' + kn);
+              return GLOBAL_METHODS.topath((req.parsedUrl.pathname.length > 1 ? req.parsedUrl.pathname : '') + '/' + kn);
             } else {
               return evaling(nw);
             }
@@ -319,9 +322,6 @@ module.exports = function(require, GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VAR
                 if (er || !(Array.isArray(data)) || !(data.length)) {
                   next(er || 'No records found.', 400);
                 } else {
-                  if (typeof nw.storeAs === 'string') {
-                    require.GlobalStore.set(nw.storeAs, data);
-                  }
                   var ln = data.length;
 
                   function forOne(data, z, as) {
@@ -353,7 +353,7 @@ module.exports = function(require, GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VAR
       }
       notFoundCode = '405';
     }
-    next(evaling(cache.errors[notFoundCode]));
+    evaling(cache.errors[notFoundCode]);
   }
 
 

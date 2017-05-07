@@ -1,5 +1,5 @@
 
-module.exports = function(require, GLOBAL_APP_CONFIG,GLOBAL_METHODS){
+module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
 
   function func(root){
     var len = arguments.length, now = root;

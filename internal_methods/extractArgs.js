@@ -27,7 +27,7 @@ module.exports = function(what,desc,helpar){
         break;
       case '-c':
       case '--configpath':
-        if(value){ options.configpath = value === true ? value : path.join(cwd,value); }
+        if(typeof value === 'string'){ options.configpath = path.join(cwd,value); }
         break;
       case '-o':
       case '--outfile':
@@ -48,17 +48,22 @@ module.exports = function(what,desc,helpar){
       case '-s':
       case '--start':
         if(value === true){ options.start = true; }
+      case '-l':
+      case '--evalenabled':
+        if(value === true){ options.evalenabled = true; }
       case '-d':
       case '--staticdir':
         if(value){ options.staticdir = value === true ? value : path.join(cwd,value); }
         break;
       case '-p':
       case '--port':
-        if(value){ options.port = parseInt(value,10); }
+        if(value){ value = parseInt(value,10); if(value) { options.port = value; } }
         break;
       case '-m':
       case '--mountpath':
-        if(value){ options.mountpath = value === true ? value : path.join(cwd,value); }
+        if(typeof value === 'string' && value.charAt(0) === '/'){
+          options.mountpath = value;
+        }
         break;
       case '-h':
       case '--help':
@@ -84,9 +89,9 @@ module.exports = function(what,desc,helpar){
       return options;
     }
     for(var ky in read){
-      ky = ky.toLowerCase();
-      if(!(options.hasOwnProperty(ky))){
-        options[ky] = read[ky];
+      var _ky = ky.toLowerCase();
+      if(!(options.hasOwnProperty(_ky))){
+        options[_ky] = read[ky];
       }
     }
     return options;

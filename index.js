@@ -9,15 +9,15 @@ const Iterate = require('./internal_methods/iterateRecursive');
 //END_NO_OUT_FILE
 
 
-GLOBAL_METHODS.assign = require('./common_methods/assign')(require, GLOBAL_APP_CONFIG, GLOBAL_METHODS);
-GLOBAL_METHODS.isAlphaNum = require('./common_methods/isAlphaNum')(require, GLOBAL_APP_CONFIG, GLOBAL_METHODS);
-GLOBAL_METHODS.lastValue = require('./common_methods/lastValue')(require, GLOBAL_APP_CONFIG, GLOBAL_METHODS);
-GLOBAL_METHODS.makeToLast = require('./common_methods/makeToLast')(require, GLOBAL_APP_CONFIG, GLOBAL_METHODS);
-GLOBAL_METHODS.objwalk = require('./common_methods/objwalk')(require, GLOBAL_APP_CONFIG, GLOBAL_METHODS);
-GLOBAL_METHODS.replace = require('./common_methods/replace')(require, GLOBAL_APP_CONFIG, GLOBAL_METHODS);
-GLOBAL_METHODS.resolveSlash = require('./common_methods/resolveSlash')(require, GLOBAL_APP_CONFIG, GLOBAL_METHODS);
-GLOBAL_METHODS.stringify = require('./common_methods/stringify')(require, GLOBAL_APP_CONFIG, GLOBAL_METHODS);
-GLOBAL_METHODS.request = require('./server_methods/request')(require, GLOBAL_APP_CONFIG, GLOBAL_METHODS);
+GLOBAL_METHODS.assign = require('./common_methods/assign')(GLOBAL_APP_CONFIG, GLOBAL_METHODS);
+GLOBAL_METHODS.isAlphaNum = require('./common_methods/isAlphaNum')(GLOBAL_APP_CONFIG, GLOBAL_METHODS);
+GLOBAL_METHODS.lastValue = require('./common_methods/lastValue')(GLOBAL_APP_CONFIG, GLOBAL_METHODS);
+GLOBAL_METHODS.makeToLast = require('./common_methods/makeToLast')(GLOBAL_APP_CONFIG, GLOBAL_METHODS);
+GLOBAL_METHODS.objwalk = require('./common_methods/objwalk')(GLOBAL_APP_CONFIG, GLOBAL_METHODS);
+GLOBAL_METHODS.replace = require('./common_methods/replace')(GLOBAL_APP_CONFIG, GLOBAL_METHODS);
+GLOBAL_METHODS.resolveSlash = require('./common_methods/resolveSlash')(GLOBAL_APP_CONFIG, GLOBAL_METHODS);
+GLOBAL_METHODS.stringify = require('./common_methods/stringify')(GLOBAL_APP_CONFIG, GLOBAL_METHODS);
+GLOBAL_METHODS.request = require('./server_methods/request')(GLOBAL_APP_CONFIG, GLOBAL_METHODS);
 
 //CLIENT_METHODS_BLOCK
 
@@ -25,7 +25,7 @@ Object.freeze(GLOBAL_METHODS);
 
 const SERVER = require('./client_server/server'),
   HANDLER = require('./client_server/server_handler'),
-  ENGINE = SERVER(require, GLOBAL_APP_CONFIG, GLOBAL_METHODS);
+  ENGINE = SERVER(GLOBAL_APP_CONFIG, GLOBAL_METHODS);
 
 function func(CONFIG_PATH, JSON_PATH, ROOT_DIR_PATH, GLOBAL_VARS, GLOBAL_API) {
   const ASSIGN = GLOBAL_METHODS.assign,
@@ -48,8 +48,7 @@ function func(CONFIG_PATH, JSON_PATH, ROOT_DIR_PATH, GLOBAL_VARS, GLOBAL_API) {
     console.log(erm);
   }
   //_ONLY_SERVER_END
-  ASSIGN(GLOBAL_APP_CONFIG, fromConfigReq);
-  ASSIGN(GLOBAL_APP_CONFIG, CONFIG_PATH);
+  ASSIGN(GLOBAL_APP_CONFIG, fromConfigReq, CONFIG_PATH);
   //END_NOT_IN_FILE
   //_ONLY_SERVER
   if (typeof GLOBAL_APP_CONFIG.httsConfig === 'object' &&
@@ -69,7 +68,6 @@ function func(CONFIG_PATH, JSON_PATH, ROOT_DIR_PATH, GLOBAL_VARS, GLOBAL_API) {
   }
   delete GLOBAL_APP_CONFIG.httsConfig;
   //_ONLY_SERVER_END
-  Object.freeze(GLOBAL_APP_CONFIG);
   if ((typeof GLOBAL_VARS === 'object' && GLOBAL_VARS !== null && !(Array.isArray(GLOBAL_VARS))) &&
     (typeof GLOBAL_API === 'object' && GLOBAL_API !== null && !(Array.isArray(GLOBAL_API)))) {} else {
     //_NOT_IN_FILE
@@ -81,8 +79,7 @@ function func(CONFIG_PATH, JSON_PATH, ROOT_DIR_PATH, GLOBAL_VARS, GLOBAL_API) {
       console.log(erm);
     }
     //_ONLY_SERVER_END
-    ASSIGN(MAINS, fromJsonReq);
-    ASSIGN(MAINS, JSON_PATH);
+    ASSIGN(MAINS, fromJsonReq, JSON_PATH);
     Object.freeze(MAINS);
 
     GLOBAL_API = require('./defaults.json');
@@ -100,9 +97,19 @@ function func(CONFIG_PATH, JSON_PATH, ROOT_DIR_PATH, GLOBAL_VARS, GLOBAL_API) {
 
     //NO_OUT_FILE
     Iterate(function(bs) {
-      return lastValue.apply(lastValue, [GLOBAL_API.root].concat(bs));
+      return lastValue.apply(lastValue, [GLOBAL_API.root].concat(bs).concat([function(rt, key) {
+        if ([undefined, null].indexOf(rt[key]) === -1) {
+          return rt[key];
+        } else {
+          if ([undefined, null].indexOf(rt[':' + key]) === -1) {
+            return rt[':' + key];
+          } else {
+            return undefined;
+          }
+        }
+      }]));
     }, ROOT_DIR_PATH, function(cr, ms, func) {
-      cr._methods[ms] = func(require, GLOBAL_APP_CONFIG, GLOBAL_METHODS);
+      cr._methods[ms] = func(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_API);
     }, function(cr, vrt) {
       cr._vars = vrt;
     }, N_REG);
@@ -114,9 +121,13 @@ function func(CONFIG_PATH, JSON_PATH, ROOT_DIR_PATH, GLOBAL_VARS, GLOBAL_API) {
   Object.freeze(GLOBAL_API);
 
   function start(hndlr, hc) {
-    ENGINE((hndlr || HANDLER)(require, GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL_API), (hc || httsConfig));
+    ENGINE((hndlr || HANDLER)(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL_API), (hc || httsConfig), GLOBAL_API);
   }
 
+  var onLoad = GLOBAL_METHODS.lastValue(GLOBAL_API, 'root', '_methods', 'onLoad');
+  if (typeof onLoad === 'function') {
+    onLoad();
+  }
   start.api = GLOBAL_API;
   start.config = GLOBAL_APP_CONFIG;
   return start;

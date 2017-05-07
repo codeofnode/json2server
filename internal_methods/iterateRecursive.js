@@ -1,13 +1,12 @@
 
 const NodeFs = require('fs'), NodePath = require('path'),
-      isAlphaNum = require('./../common_methods/isAlphaNum')(require);
+      isAlphaNum = require('./../common_methods/isAlphaNum')();
 
 module.exports = function(getCurr, ROOT_DIR_PATH, forMod, forVar, N_REG){
   if(typeof getCurr !== 'function') throw new Error('First parameter must be a function');
   if(typeof forMod !== 'function') forMod = function(){};
   if(typeof forVar !== 'function') forVar = function(){};
   if(typeof N_REG !== 'function') N_REG = isAlphaNum;
-  if(typeof ROOT_DIR_PATH !== 'string') ROOT_DIR_PATH = process.cwd()+'/root';
   var forOneModule = function(bs){
     var mods =[];
     var pths = [];

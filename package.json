@@ -1,28 +1,32 @@
 {
   "name": "json2server",
-  "version": "0.1.4",
+  "version": "0.1.6",
   "description": "Provide a json to ready a server. It has routes, validations and more.",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "bin":{
-    "json2server":"bin/json2server"
+  "bin": {
+    "json2server": "bin/json2server"
   },
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/codeofnode/json2server.git"
   },
-  "bugs":{
+  "bugs": {
     "url": "https://github.com/codeofnode/json2server/issues",
-    "email":"codeofnode@gmail.com"
+    "email": "codeofnode@gmail.com"
   },
   "engines": {
     "node": ">=0.6.0"
   },
-  "keywords" : [ "server", "json", "routes" ],
+  "keywords": [
+    "server",
+    "json",
+    "routes"
+  ],
   "author": {
-    "name":"Ramesh Kumar",
-    "email":"codeofnode@gmail.com"
+    "name": "Ramesh Kumar",
+    "email": "codeofnode@gmail.com"
   },
   "license": "MIT",
   "homepage": "https://github.com/codeofnode/json2server"

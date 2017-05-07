@@ -1,13 +1,13 @@
 
-module.exports = function(require, GLOBAL_APP_CONFIG,GLOBAL_METHODS){
+module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
 
   function addEvent(func,on) {
     if(typeof on !== 'string') on = 'onload';
-    var oldonload = require[on];
-    if (typeof require[on] != 'function') {
-      require[on] = func;
+    var oldonload = window[on];
+    if (typeof window[on] != 'function') {
+      window[on] = func;
     } else {
-      require[on] = function() {
+      window[on] = function() {
         if (oldonload) {
           oldonload();
         }

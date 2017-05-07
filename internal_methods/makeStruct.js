@@ -1,12 +1,6 @@
 var path = require('path');
 var fs = require('fs');
-var ModuleDir =path.join(process.cwd(),process.env.MOD_DIR || 'modules');
 var GLOBAL_METHODS=require('./../index.js').methods;
-try {
-  fs.mkdirSync(ModuleDir);
-} catch(erm){
-}
-
 var doneMap = {};
 
 const N_REG = GLOBAL_METHODS.isAlphaNum;
@@ -15,14 +9,17 @@ var kys = ['+','=','$', '$get', '$post', '$put', '$delete', '$options', '>', '$p
 
 module.exports = function(ModuleDir,apiFile, startFile){
 
-  if(!apiFile) apiFile = require('path').join(process.cwd(),'server.json');
+  try {
+    fs.mkdirSync(ModuleDir);
+  } catch(erm){
+  }
+
   var MAINS = require(apiFile);
 
   GLOBAL_METHODS.replace(MAINS.vars, MAINS.vars);
   GLOBAL_METHODS.replace(MAINS.root, MAINS.vars);
 
   if(startFile) {
-    startFile = require('path').join(process.cwd(), startFile);
     require('fs').writeFileSync(startFile, "var j2s = require('json2server')(); j2s.start();");
   }
 
@@ -60,7 +57,7 @@ module.exports = function(ModuleDir,apiFile, startFile){
       var ph =path.join.apply(path, ls.concat(['_methods', ky, 'index.js']));
       if(!(fs.existsSync(ph))) {
         try {
-          fs.writeFileSync(ph, 'module.exports = function(require, GLOBAL_APP_CONFIG,GLOBAL_METHODS){\n\nfunction func(vars,methods,req,res){\n\n}\n\nreturn func;\n\n}\n');
+          fs.writeFileSync(ph, 'module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS,GLOBAL_API){\n\nfunction func(vars,methods,req,res){\n\n}\n\nreturn func;\n\n}\n');
         } catch(erm){
         }
       }

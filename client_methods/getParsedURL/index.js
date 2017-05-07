@@ -1,7 +1,7 @@
 
-module.exports = function(require, GLOBAL_APP_CONFIG,GLOBAL_METHODS){
+module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
   function func(){
-    var lc = require.location;
+    var lc = location;
     return {
       hash : lc.hash,
       host : lc.host,

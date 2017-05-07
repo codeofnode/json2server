@@ -1,4 +1,4 @@
-module.exports = function(require, GLOBAL_APP_CONFIG,GLOBAL_METHODS){
+module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
 
   function isObect(ob) {
     return typeof ob === 'object' && ob !== null && !(Array.isArray(ob));
@@ -21,7 +21,7 @@ module.exports = function(require, GLOBAL_APP_CONFIG,GLOBAL_METHODS){
       method = options.method;
       payload = options.payload;
       headers = options.headers;
-      toParse = options.toParse;
+      toParse = typeof options.toParse === 'function' ? options.toParse : JSON.parse;
     } else {
       return cb('INVALID_OPTIONS');
     }
@@ -31,8 +31,20 @@ module.exports = function(require, GLOBAL_APP_CONFIG,GLOBAL_METHODS){
     if (typeof method !== 'string' || !method.length) {
       return cb('METHOD_NOT_FOUND');
     }
-    var obj = urlp.parse(url);
+    var contFound = false,obj = urlp.parse(url);
     obj.method = method;
+    if(typeof headers !== 'object' || header === null){
+      headers = {};
+    }
+    for(var key in headers){
+      if(key.toLowerCase() === 'content-type'){
+        contFound = true;
+        break;
+      }
+    }
+    if(!contFound){
+      headers['content-type'] = 'application/json';
+    }
     obj.headers = headers;
     var req = http.request(obj, function(res) {
       var resc = '';

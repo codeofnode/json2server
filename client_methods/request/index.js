@@ -1,5 +1,5 @@
 
-module.exports = function(require, GLOBAL_APP_CONFIG,GLOBAL_METHODS){
+module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
   function isObect(ob){
     return typeof ob === 'object' && ob !== null && !(Array.isArray(ob));
   }
@@ -18,7 +18,7 @@ module.exports = function(require, GLOBAL_APP_CONFIG,GLOBAL_METHODS){
       method = options.method;
       payload = options.payload;
       headers = options.headers;
-      toParse = options.toParse;
+      toParse = typeof options.toParse === 'function' ? options.toParse : JSON.parse;
     } else {
       return cb('INVALID_OPTIONS');
     }
@@ -28,7 +28,7 @@ module.exports = function(require, GLOBAL_APP_CONFIG,GLOBAL_METHODS){
     if(typeof method !== 'string' || !method.length){
       return cb('METHOD_NOT_FOUND');
     }
-    var httpRequest = new require.XMLHttpRequest();
+    var httpRequest = new XMLHttpRequest();
     if (!httpRequest) {
       return cb('XMLHTTP_NOT_AVAILABLE');
     }
@@ -55,12 +55,19 @@ module.exports = function(require, GLOBAL_APP_CONFIG,GLOBAL_METHODS){
       }
     }
     httpRequest.open(method, url, true);
+    var contFound = false;
     if(isObect(options.headers)){
       for(var ky in options.headers){
         if(typeof options.headers[ky] === 'string'){
+          if(ky.toLowerCase() === 'content-type'){
+            contFound = true;
+          }
           httpRequest.setRequestHeader(ky, options.headers[ky]);
         }
       }
+    }
+    if(!(contFound)){
+      httpRequest.setRequestHeader('content-type', 'application/json');
     }
     if(typeof payload !== undefined){
       payload = GLOBAL_METHODS.stringify(payload);

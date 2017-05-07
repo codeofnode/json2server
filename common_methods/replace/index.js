@@ -1,5 +1,5 @@
 
-module.exports = function(require, GLOBAL_APP_CONFIG,GLOBAL_METHODS){
+module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
 
   const START_VAR = '{{', END_VAR = '}}', SVAR_L = 2, EVAR_L = 2,
         NOT_FOUND_MSG = 'VAR_NOT_FOUND',
