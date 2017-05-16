@@ -22,7 +22,9 @@ module.exports = function(GLOBAL_APP_CONFIG,GLOBAL_METHODS){
     var ar = getNewReqRes(location.pathname);
     GLOBAL_METHODS.hideAllChildren(document.getElementById(MAIN_CONT_ID));
     ar[1].element.style.display = 'block';
-    if(handle !== false) mainHandler(ar[0],ar[1]);
+    if(handle !== false) {
+      (typeof handle === 'function' ? handle : mainHandler)(ar[0],ar[1]);
+    }
     return false;
   };
 

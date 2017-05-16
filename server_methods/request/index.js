@@ -5,6 +5,7 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
   }
 
   const http = require('http'),
+    https = require('https'),
     urlp = require('url');
 
   function func(options, cb) {
@@ -46,7 +47,7 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
       headers['content-type'] = 'application/json';
     }
     obj.headers = headers;
-    var req = http.request(obj, function(res) {
+    var req = (obj.protocol === 'https:' ? https : http).request(obj, function(res) {
       var resc = '';
       res.setEncoding('utf8');
       res.on('data', function(chunk) {

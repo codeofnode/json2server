@@ -63,6 +63,14 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
 
           function cl(ky, dt, ifv) {
             if (ifv === undefined || doEval(rq, rs, cache, methods, ifv, true)) {
+              if (ky.charAt(0) === '#') {
+                var el = document.getElementById(ky.substring(1));
+                return evaluate(rq, rs, cache, methods, dt, function(str) {
+                  if (el) {
+                    el.innerHTML = str;
+                  }
+                }, el);
+              }
               cache[ky] = evaluate(rq, rs, cache, methods, dt);
             }
           }
@@ -87,7 +95,7 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
             }
             if (typeof vl[n] === 'object' && vl[n]) {
               var ch = function(vl1, vl2, ps) {
-                if (!vl2) vl2 = cache.errors.inval;
+                if (!vl2) vl2 = getErrorWithStatusCode(cache, 'inval');
                 if (ps) {
                   var er = doEval(rq, rs, cache, methods, vl1, true);
                   if (!ps || !er) {
@@ -170,6 +178,32 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
     }
     ob = GLOBAL_METHODS.replace(ob, cache, methods);
     return ob;
+  }
+
+  function getErrorWithStatusCode(cache, key, statusCode) {
+    var snd = GLOBAL_METHODS.lastValue(cache, 'errors', key);
+    if (!snd) {
+      snd = {};
+      var defKey = cache.defKey || '_';
+      switch (statusCode || key) {
+        case '405':
+          snd[defKey] = 'METHOD_NOT_FOUND';
+          snd.status = 405;
+          break;
+        case '404':
+          snd[defKey] = 'ROUTE_NOT_FOUND';
+          snd.status = 404;
+          break;
+        case '408':
+          snd[defKey] = 'TIMEOUT';
+          snd.status = 408;
+          break;
+        default:
+          snd[defKey] = 'INVALID_INPUT';
+          snd.status = 400;
+      }
+    }
+    return snd;
   }
 
   function evaluate(req, res, cache, methods, obj, next) {
@@ -256,7 +290,7 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
     var evaling = function(ml) {
       var af = function(dt, num, noev) {
         var nxt = next;
-        cache.currentData = dt;
+        if (dt !== undefined) cache.currentData = dt;
         if (!noev && typeof ml.on === 'string') {
           evaluate(req, res, cache, methods, ml.on).split(',').forEach(function(ev) {
             register(ml, req, ev, af.bind(null, dt, num, true));
@@ -271,8 +305,11 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
         req.once(ml.once, af);
       } else {
         if (ml.from !== undefined) {
+          var directRespond = !(ml['@']);
           fromSource(evaluate(req, res, cache, methods, ml.from), function(er, data) {
-            if (er || !data) {
+            if (directRespond) {
+              next(evaluate(req, res, cache, methods, er || data), er ? 400 : 200);
+            } else if (er || !data) {
               af(er || 'Record not found.', 400);
             } else {
               af(data);
@@ -287,7 +324,7 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
     if (['$', '>', 'GET'].indexOf(method) !== -1) {
       if (typeof cache.timeout === 'number') {
         setTimeout(function() {
-          evaling(cache.errors['408']);
+          evaling(getErrorWithStatusCode(cache, '408'));
         }, cache.timeout);
       }
       switch (method) {
@@ -353,7 +390,7 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
       }
       notFoundCode = '405';
     }
-    evaling(cache.errors[notFoundCode]);
+    evaling(getErrorWithStatusCode(cache, notFoundCode));
   }
 
 
@@ -362,7 +399,7 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
     res['$W_END'] = true;
     var parsed = req.parsedUrl,
       curr, vl, notFound = false,
-      pthn = parsed.pathname;
+      pthn = parsed.pathname || '';
     var cache = getNewVars(),
       methods = {};
     methods = GLOBAL_METHODS;
