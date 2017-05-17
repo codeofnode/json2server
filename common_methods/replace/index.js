@@ -91,15 +91,17 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
   }
 
   function handleFunction(inp,vars,methods){
-    if(typeof methods === 'object' && typeof inp === 'object' && inp && (typeof inp['@'] === 'string')
-        && IS_ALPHA_NUM(inp['@']) && (typeof methods[inp['@']] === 'function')){
-      var pms = (typeof inp.params === 'object' && inp.params !== null) ? ASSIGN(false,inp.params) : inp.params;
-      var params = deepReplace(pms,vars,methods);
-      if(!(Array.isArray(params))){
-        params = [params];
+    if(typeof inp === 'object' && inp) {
+      if(typeof methods === 'object' && (typeof inp['@'] === 'string') &&
+          IS_ALPHA_NUM(inp['@']) && (typeof methods[inp['@']] === 'function')){
+        var pms = (typeof inp.params === 'object' && inp.params !== null) ? ASSIGN(false,inp.params) : inp.params;
+        var params = deepReplace(pms,vars,methods);
+        if(!(Array.isArray(params))){
+          params = [params];
+        }
+        params.unshift(vars,methods);
+        return methods[inp['@']].apply(null, params);
       }
-      params.unshift(vars,methods);
-      return methods[inp['@']].apply(null, params);
     }
     return inp;
   }

@@ -171,9 +171,7 @@ if(options.outfile){
   REPL(GLOBAL_API,GLOBAL_API.vars);
   GLOBAL_VARS = GLOBAL_API.vars;
   delete GLOBAL_API.vars;
-  if(isBrowser){
-    FILE_STR.push('var GLOBAL_VARS='+JSON.stringify(GLOBAL_VARS)+';');
-  }
+  FILE_STR.push('var GLOBAL_VARS='+JSON.stringify(GLOBAL_VARS)+';');
 }
 
 FileArr.forEach(function(line){
@@ -229,7 +227,7 @@ if(options.outfile){
         nowFunc =
         ReadFromFile(nowFunc,require('path').join.apply(require('path'), pth),vrt,ASSIGN,htmlReplaceVars,REPL);
       }
-      PAP.push('GLOBAL_API.root.'+itrs[0].join('.')+'=('+nowFunc+')(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_API);');
+      PAP.push('GLOBAL_API.root.'+itrs[0].join('.')+'=('+nowFunc+')(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL_API);');
     }
   }, function(cr,vrt,pths){
     var ls = '', itrs = getLeftAndRightForIterate(pths.slice(-1));
@@ -239,8 +237,7 @@ if(options.outfile){
     PAP.push('GLOBAL_API.root'+ls+'._vars='+JSON.stringify(vrt)+';');
   }, N_REG);
 
-  FILE_STR.push(PAP.join('\n')+'func(undefined,undefined,undefined,'+
-        (isBrowser ? 'GLOBAL_VARS' : JSON.stringify(GLOBAL_VARS))+',GLOBAL_API)();');
+  FILE_STR.push(PAP.join('\n')+'func(undefined,undefined,undefined,GLOBAL_VARS,GLOBAL_API)();');
   NodeFs.writeFileSync(((typeof options.outfile === 'string' && options.outfile.length) ? options.outfile : (require('path').join(process.cwd(), isBrowser ? 'client.js' : 'server.js'))),
       FILE_STR.join('\n'));
   process.exit(0);

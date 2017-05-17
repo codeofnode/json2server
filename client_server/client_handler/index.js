@@ -62,7 +62,7 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
             pl = pluskeys.length;
 
           function cl(ky, dt, ifv) {
-            if (ifv === undefined || doEval(rq, rs, cache, methods, ifv, true)) {
+            if (ifv === undefined || doEval(rq, rs, cache, methods, ifv)) {
               if (ky.charAt(0) === '#') {
                 var el = document.getElementById(ky.substring(1));
                 return evaluate(rq, rs, cache, methods, dt, function(str) {
@@ -97,7 +97,7 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
               var ch = function(vl1, vl2, ps) {
                 if (!vl2) vl2 = getErrorWithStatusCode(cache, 'inval');
                 if (ps) {
-                  var er = doEval(rq, rs, cache, methods, vl1, true);
+                  var er = doEval(rq, rs, cache, methods, vl1);
                   if (!ps || !er) {
                     ps = false;
                     sendNow(cache.defKey, rq, rs, evaluate(rq, rs, cache, methods, vl2), 400);
@@ -159,7 +159,14 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
 
   function doEval(req, res, cache, methods, obj, bool, nocall) {
     var ret = obj;
-    if (true) {
+    if (typeof ret === 'string' && nocall !== true) {
+      var valn = evaluate(req, res, cache, methods, ret);
+      if (typeof valn === 'string' && (valn.indexOf('{{') !== -1 || valn.indexOf('}}') !== -1)) {
+        return false;
+      }
+      return Boolean(valn);
+    }
+    if (GLOBAL_APP_CONFIG.evalenabled !== false) {
       try {
         ret = eval(nocall ? obj : evaluate(req, res, cache, methods, obj));
       } catch (erm) {
@@ -227,6 +234,8 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
       } else {
         isFunc = false;
       }
+    } else if (typeof obj === 'object' && obj['#val'] !== undefined) {
+      obj = obj['#val'];
     }
     if (isAsync) {
       methods.async = function() {
@@ -273,7 +282,7 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
         nw.status = parseInt(val);
         val = (st === undefined) ? 'SUCCESS' : st;
       }
-      nw[defKey] = val;
+      nw[defKey || '_'] = val;
       val = nw;
     }
     res.statusCode = val.status || st || 200;

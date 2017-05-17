@@ -109,7 +109,7 @@ function func(CONFIG_PATH, JSON_PATH, ROOT_DIR_PATH, GLOBAL_VARS, GLOBAL_API) {
         }
       }]));
     }, ROOT_DIR_PATH, function(cr, ms, func) {
-      cr._methods[ms] = func(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_API);
+      cr._methods[ms] = func(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL_API);
     }, function(cr, vrt) {
       cr._vars = vrt;
     }, N_REG);

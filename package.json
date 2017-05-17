@@ -1,13 +1,11 @@
 {
   "name": "json2server",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Provide a json to ready a server. It has routes, validations and more.",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "bin": {
-    "json2server": "bin/json2server"
-  },
+  "bin": "bin/json2server",
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/codeofnode/json2server.git"
