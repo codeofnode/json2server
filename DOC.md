@@ -121,6 +121,7 @@
 ```
 ### Sequence of properties
 > checked once a module/route is passed through the request url path
+```
 1. "+"
 2. "="
 3. "{$,$post,$put,$patch,$delete,$options,:pathvar}"
