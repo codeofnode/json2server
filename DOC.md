@@ -126,3 +126,12 @@
 3. "{$,$post,$put,$patch,$delete,$options,:pathvar}"
 4. "{anyChildRoute}"
 ```
+
+### Yes documentation is poor, but i am not able to help it.
+> I have an example. Watch this [repo](https://github.com/codeofnode/client-server) . To get what kind of structure you need for your project, first clone [repo](https://github.com/codeofnode/client-server) .. then
+```
+$ cd <cloned_client-server_repo_dir>
+$ npm install
+$ bash build.sh
+```
+After that you will find a directory structure that `json2server` demands
