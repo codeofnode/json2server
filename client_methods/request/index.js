@@ -5,20 +5,20 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
   }
 
   function func(options,cb){
-    var url, method, payload, headers, toParse;
+    var url, method, payload, headers, parser;
     if(typeof cb !== 'function'){
       cb = function(){};
     }
     if(typeof options === 'string'){
       url = options;
       method = 'GET';
-      toParse = JSON.parse;
+      parser = JSON.parse;
     } else if(isObect(options)){
       url = options.url;
       method = options.method;
       payload = options.payload;
       headers = options.headers;
-      toParse = typeof options.toParse === 'function' ? options.toParse : JSON.parse;
+      parser = typeof options.parser === 'function' ? options.parser : JSON.parse;
     } else {
       return cb('INVALID_OPTIONS');
     }
@@ -44,9 +44,9 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
         }
         if(httpRequest.responseXML){
           toSend.parsed = httpRequest.responseXML;
-        } else if(typeof toParse === 'function'){
+        } else if(typeof parser === 'function'){
           try {
-            toSend.parsed = toParse(httpRequest.responseText);
+            toSend.parsed = parser(httpRequest.responseText);
           } catch(er){
             toSend.parseError = er;
           }
@@ -69,7 +69,7 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
     if(!(contFound)){
       httpRequest.setRequestHeader('content-type', 'application/json');
     }
-    if(typeof payload !== undefined){
+    if (payload !== undefined) {
       payload = GLOBAL_METHODS.stringify(payload);
       httpRequest.send(payload);
     } else {
