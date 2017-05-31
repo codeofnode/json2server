@@ -5,12 +5,8 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
   function fromSource(src, after) {
     if (typeof src === 'string') {
       GLOBAL_METHODS.request(src, function(er, obj) {
-        if (er) after(er);
-        else if (typeof obj.statusCode === 'number' && obj.statusCode > 199 && obj.statusCode < 300) {
-          after(null, obj.parsed);
-        } else {
-          after(obj.parsed);
-        }
+        if (er) after(er.parsed || er);
+        else after(null, obj.parsed);
       });
     } else {
       if (!Array.isArray(src)) {

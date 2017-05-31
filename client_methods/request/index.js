@@ -1,6 +1,6 @@
 
 module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
-  function isObect(ob){
+  function isObject(ob){
     return typeof ob === 'object' && ob !== null && !(Array.isArray(ob));
   }
 
@@ -13,7 +13,7 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
       url = options;
       method = 'GET';
       parser = JSON.parse;
-    } else if(isObect(options)){
+    } else if(isObject(options)){
       url = options.url;
       method = options.method;
       payload = options.payload;
@@ -51,7 +51,11 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
             toSend.parseError = er;
           }
         }
-        cb(null, toSend);
+        if (typeof toSend.statusCode === 'number' && Math.floor((toSend.statusCode / 100)) === 2) {
+          cb(null, toSend);
+        } else {
+          cb(toSend);
+        }
       }
     }
     httpRequest.open(method, url, true);
@@ -75,6 +79,7 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
     } else {
       httpRequest.send();
     }
+    return httpRequest;
   }
 
   return func;
