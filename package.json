@@ -22,10 +22,7 @@
     "json",
     "routes"
   ],
-  "author": {
-    "name": "Ramesh Kumar",
-    "email": "codeofnode@gmail.com"
-  },
+  "author": "Ramesh Kumar <codeofnode@gmail.com>",
   "license": "MIT",
   "homepage": "https://github.com/codeofnode/json2server"
 }
