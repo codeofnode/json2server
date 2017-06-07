@@ -1,12 +1,12 @@
 # Documentation
 
 ## Directory structure
-> Some rules to identify if its a path module or a just a utility. Consider the root directory is the root module of the directory structure.
+> Some rules to identify if its a path module or a just a utility. Consider the directory from where you hit `json2server` (say it is `$PROJECT_PATH`) is having directory named `root` (or `client_root` in case of browser script), is the root module from where the handler(or utility) will be called.
 
 * A directory can be act as module only if it has alphanumeric characters in its name.
 * A directory can have utilities, if it has alphanumeric characters in its name and is a sub-director of directory named as `_methods`. For example
 * Similarily `modA` can also have other sub modules as `subModOfModA` and `subModOfModA` can further have an utility directory `_methods` and also c
-* A module/subModule represents a route/subRoute in outer world
+* A directory $PROJECT_PATH/root/route/subRoute represents a route/subRoute in outer world
 * If a route path is a variable, then the module directory name should not start with colon `:` however in the `server.json`, it should start with ':'
 
 ## `server.json` or `client.json` structure
