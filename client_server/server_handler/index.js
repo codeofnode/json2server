@@ -1,6 +1,7 @@
 module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL_API) {
   const IS_ALPHA_NUM = GLOBAL_METHODS.isAlphaNum;
   const S_VARS = JSON.stringify(GLOBAL_VARS);
+  var PARSEABLE = (GLOBAL_APP_CONFIG.autoparse !== false) ? ['POST', 'PUT', 'PATCH', 'DELETE'] : [];
 
   function fromSource(src, after) {
     if (typeof src === 'string' && src.indexOf('http') === 0) {
@@ -17,14 +18,14 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
   }
 
   function getNewVars() {
-    var cache = JSON.parse(S_VARS);
-    if (typeof cache.params !== 'object' || cache.params === null) cache.params = {};
-    if (typeof cache.params.path !== 'object' || cache.params.path === null) cache.params.path = {};
-    if (typeof cache.params.query !== 'object' || cache.params.query === null) cache.params.query = {};
-    if (typeof cache.params.body !== 'object' || cache.params.body === null) cache.params.body = {};
-    if (typeof cache.params.header !== 'object' || cache.params.header === null) cache.params.header = {};
-    if (!(Array.isArray(cache.params.file))) cache.params.file = [];
-    return cache;
+    var rvars = JSON.parse(S_VARS);
+    if (typeof rvars.params !== 'object' || rvars.params === null) rvars.params = {};
+    if (typeof rvars.params.path !== 'object' || rvars.params.path === null) rvars.params.path = {};
+    if (typeof rvars.params.query !== 'object' || rvars.params.query === null) rvars.params.query = {};
+    if (typeof rvars.params.body !== 'object' || rvars.params.body === null) rvars.params.body = {};
+    if (typeof rvars.params.header !== 'object' || rvars.params.header === null) rvars.params.header = {};
+    if (!(Array.isArray(rvars.params.file))) rvars.params.file = [];
+    return rvars;
   }
 
   function register(ob, req, ev, call, modev) {
@@ -35,19 +36,30 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
     req.on(ev, call);
   }
 
-  var forOneObj = function(rq, rs, cache, methods, ob) {
+  var onceOrParsed = function(req, rvars, pre, func) {
+    if (req.uponParse || (typeof pre === 'string')) {
+      req.once(typeof pre === 'string' ? pre : 'body-parsed', func);
+      return true;
+    } else {
+      return false;
+    }
+  };
+
+  var forOneObj = function(rq, rs, rvars, methods, ob, ks) {
     if (rs.responded) return;
-    GLOBAL_METHODS.assign(cache, ob._vars);
+    if (!ob) return false;
+    GLOBAL_METHODS.assign(rvars, ob._vars);
     GLOBAL_METHODS.assign(methods, ob._methods);
-    var kys = Object.keys(ob).sort(),
+    var kys = (ks || Object.keys(ob).sort()),
       kl = kys.length;
     var res = {};
     for (var ky, vl, z = 0; z < kl; z++) {
       ky = kys[z];
       vl = ob[ky];
+      if (vl === undefined) continue;
       switch (ky) {
         case '*':
-          if (String(GLOBAL_METHODS.replace(vl, cache, methods) === 'false')) {
+          if (String(GLOBAL_METHODS.replace(vl, rvars, methods) === 'false')) {
             rq.notFound = true;
           }
           break;
@@ -56,14 +68,14 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
             pl = pluskeys.length;
 
           function cl(ky, dt, ifv) {
-            if (ifv === undefined || doEval(rq, rs, cache, methods, ifv)) {
-              cache[ky] = evaluate(rq, rs, cache, methods, dt);
+            if (ifv === undefined || doEval(rq, rs, rvars, methods, ifv)) {
+              rvars[ky] = evaluate(rq, rs, rvars, methods, dt);
             }
           }
           for (var n = 0; n < pl; n++) {
             cl(pluskeys[n], vl[pluskeys[n]], vl[pluskeys[n]].if);
             if (typeof vl[pluskeys[n]].on === 'string' && vl[pluskeys[n]].on.length) {
-              evaluate(rq, rs, cache, methods, vl[pluskeys[n]].on).split(',').forEach(function(ev) {
+              evaluate(rq, rs, rvars, methods, vl[pluskeys[n]].on).split(',').forEach(function(ev) {
                 register(vl[pluskeys[n]], rq, ev, cl.bind(null, pluskeys[n], vl[pluskeys[n]], vl[pluskeys[n]].if));
               });
             }
@@ -81,17 +93,17 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
             }
             if (typeof vl[n] === 'object' && vl[n]) {
               var ch = function(vl1, vl2, ps) {
-                if (!vl2) vl2 = getErrorWithStatusCode(cache, 'inval');
+                if (!vl2) vl2 = getErrorWithStatusCode(rvars, 'inval');
                 if (rs.responded) return;
                 if (ps) {
-                  var er = doEval(rq, rs, cache, methods, vl1);
+                  var er = doEval(rq, rs, rvars, methods, vl1);
                   if (!ps || !er) {
                     ps = false;
-                    sendNow(cache.defKey, rq, rs, evaluate(rq, rs, cache, methods, vl2), 400);
+                    sendNow(rvars.defKey, rq, rs, evaluate(rq, rs, rvars, methods, vl2), 400);
                   }
                 } else {
                   ps = false;
-                  sendNow(cache.defKey, rq, rs, evaluate(rq, rs, cache, methods, vl2), 400);
+                  sendNow(rvars.defKey, rq, rs, evaluate(rq, rs, rvars, methods, vl2), 400);
                 }
                 return ps;
               };
@@ -105,8 +117,7 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
                 }
                 return ps;
               };
-              if (typeof vl[n].once === 'string') {
-                rq.once(vl[n].once, bth.bind(null, vl[n], pass));
+              if (onceOrParsed(rq, rvars, vl[n].once, bth.bind(null, vl[n], pass))) {
                 continue;
               } else {
                 if (bth(vl[n], pass) === false) {
@@ -145,18 +156,18 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
     return false;
   };
 
-  function doEval(req, res, cache, methods, obj, bool, nocall) {
+  function doEval(req, res, rvars, methods, obj, bool, nocall) {
     var ret = obj;
     if (typeof ret === 'string' && nocall !== true) {
-      var valn = evaluate(req, res, cache, methods, ret);
-      if (typeof valn === 'string' && (valn.indexOf('{{') !== -1 || valn.indexOf('}}') !== -1)) {
+      var valn = evaluate(req, res, rvars, methods, ret);
+      if (typeof valn === 'string' && valn.indexOf('{{') !== -1 && valn.indexOf('}}') !== -1) {
         return false;
       }
       return Boolean(valn);
     }
     if (GLOBAL_APP_CONFIG.evalenabled === true) {
       try {
-        ret = eval(nocall ? obj : evaluate(req, res, cache, methods, obj));
+        ret = eval(nocall ? obj : evaluate(req, res, rvars, methods, obj));
       } catch (erm) {
         if (bool) return false;
       }
@@ -164,22 +175,22 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
     return bool ? Boolean(ret) : ret;
   }
 
-  function rectify(obj, cache, methods) {
+  function rectify(obj, rvars, methods) {
     var ob;
     if (typeof obj === 'object' && obj !== null) {
       ob = GLOBAL_METHODS.assign(undefined, obj);
     } else {
       ob = obj;
     }
-    ob = GLOBAL_METHODS.replace(ob, cache, methods);
+    ob = GLOBAL_METHODS.replace(ob, rvars, methods);
     return ob;
   }
 
-  function getErrorWithStatusCode(cache, key, statusCode) {
-    var snd = GLOBAL_METHODS.lastValue(cache, 'errors', key);
+  function getErrorWithStatusCode(rvars, key, statusCode) {
+    var snd = GLOBAL_METHODS.lastValue(rvars, 'errors', key);
     if (!snd) {
       snd = {};
-      var defKey = cache.defKey || '_';
+      var defKey = rvars.defKey || '_';
       switch (statusCode || key) {
         case '405':
           snd[defKey] = 'METHOD_NOT_FOUND';
@@ -201,7 +212,7 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
     return snd;
   }
 
-  function evaluate(req, res, cache, methods, obj, next) {
+  function evaluate(req, res, rvars, methods, obj, next) {
     if (res.responded) return;
     var isAsync = typeof next === 'function',
       isFunc = false,
@@ -209,7 +220,7 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
     if (obj && typeof obj['@'] === 'string') {
       isFunc = obj['@'];
       if (typeof methods[isFunc] !== 'function') {
-        isFunc = GLOBAL_METHODS.replace(obj['@'], cache, methods);
+        isFunc = GLOBAL_METHODS.replace(obj['@'], rvars, methods);
       }
       if (typeof methods[isFunc] === 'function') {
         if (obj['params'] === undefined) {
@@ -242,9 +253,9 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
         GLOBAL_METHODS.replace({
           '@': isFunc,
           'params': pms
-        }, cache, methods);
+        }, rvars, methods);
       } else {
-        next(rectify(obj, cache, methods));
+        next(rectify(obj, rvars, methods));
       }
     } else {
       var ob;
@@ -253,9 +264,9 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
           '@': isFunc,
           'params': pms
         };
-        ob = GLOBAL_METHODS.replace(ob, cache, methods);
+        ob = GLOBAL_METHODS.replace(ob, rvars, methods);
       } else {
-        ob = rectify(obj, cache, methods);
+        ob = rectify(obj, rvars, methods);
       }
       return ob;
     }
@@ -289,24 +300,23 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
     res.end(GLOBAL_METHODS.stringify(val));
   }
 
-  function resp(method, curr, req, res, cache, methods) {
+  function resp(method, curr, req, res, rvars, methods) {
     if (res.responded) return;
-    var next = sendNow.bind(null, cache.defKey, req, res);
+    var next = sendNow.bind(null, rvars.defKey, req, res);
     var evaling = function(ml) {
       var af = function(dt, num, noev) {
         var nxt = next;
         if (res.responded) return;
-        if (dt !== undefined) cache.currentData = dt;
-        return evaluate(req, res, cache, methods, ml, nxt);
+        if (dt !== undefined) rvars.currentData = dt;
+        return evaluate(req, res, rvars, methods, ml, nxt);
       };
-      if (ml && typeof ml.once === 'string') {
-        req.once(ml.once, af);
-      } else {
+      var afterFrom = function() {
+        forOneObj(req, res, rvars, methods, ml, ['+', '=']);
         if (ml.from !== undefined) {
           var directRespond = !(ml['@']);
-          fromSource(evaluate(req, res, cache, methods, ml.from), function(er, data) {
+          fromSource(evaluate(req, res, rvars, methods, ml.from), function(er, data) {
             if (directRespond) {
-              next(evaluate(req, res, cache, methods, er || data), er ? 400 : 200);
+              next(evaluate(req, res, rvars, methods, er || data), er ? 400 : 200);
             } else if (er || !data) {
               af(er || 'Record not found.', 400);
             } else {
@@ -316,47 +326,53 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
         } else {
           return af();
         }
+      };
+      if (!(onceOrParsed(req, rvars, (ml && ml.once), afterFrom))) {
+        return afterFrom();
+      }
+    };
+    var toEval = function(type) {
+      if (curr[type]) {
+        evaling(curr[type]);
+        return true;
+      } else {
+        return false;
       }
     };
     var notFoundCode = '404';
     if (['$', '>', 'GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS', 'PUT'].indexOf(method) !== -1) {
-      if (typeof cache.timeout === 'number') {
+      if (typeof rvars.timeout === 'number') {
         setTimeout(function() {
-          evaling(getErrorWithStatusCode(cache, '408'));
-        }, cache.timeout);
+          evaling(getErrorWithStatusCode(rvars, '408'));
+        }, rvars.timeout);
       }
       switch (method) {
         case '$':
           if (curr) return evaling(curr);
           else break;
         case 'POST':
-          if (curr['$post']) return evaling(curr['$post']);
-          else break;
         case 'PATCH':
-          if (curr['$patch']) return evaling(curr['$patch']);
-          else break;
         case 'PUT':
-          if (curr['$put']) return evaling(curr['$put']);
-          else break;
         case 'DELETE':
-          if (curr['$delete']) return evaling(curr['$delete']);
-          else break;
         case 'OPTIONS':
-          if (curr['$options']) return evaling(curr['$options']);
-          else break;
+          if (toEval('$' + method.toLowerCase())) {
+            return;
+          } else {
+            break;
+          }
         case 'GET':
           var nw = curr['$'] || curr['$get'];
           if (nw) {
             var isAny = false,
               kn = nw['$>'];
             if (kn) {
-              kn = evaluate(req, res, cache, methods, kn);
+              kn = evaluate(req, res, rvars, methods, kn);
               isAny = (Object.keys(curr).filter(function(ab) {
                 return ab.charAt(0) === ':';
               }).length > 0);
             }
             if (typeof kn === 'string' && (curr[kn] || isAny)) {
-              return resp(method, curr[kn], req, res, cache, methods);
+              return resp(method, curr[kn], req, res, rvars, methods);
             } else {
               return evaling(nw);
             }
@@ -371,7 +387,7 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
       }
       notFoundCode = '405';
     }
-    evaling(getErrorWithStatusCode(cache, notFoundCode));
+    evaling(getErrorWithStatusCode(rvars, notFoundCode));
   }
 
   const MIME_TYPE = {
@@ -442,12 +458,12 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
     var parsed = req.parsedUrl,
       curr, vl, notFound = false,
       pthn = parsed.pathname || '';
-    var cache = getNewVars(),
+    var rvars = getNewVars(),
       methods = {};
     GLOBAL_METHODS.assign(methods, GLOBAL_METHODS);
     if (typeof GLOBAL_APP_CONFIG.mountpath === 'string') {
       if (pthn.indexOf(GLOBAL_APP_CONFIG.mountpath) !== 0) {
-        return resp(false, curr, req, res, cache, methods);
+        return resp(false, curr, req, res, rvars, methods);
       } else {
         pthn = GLOBAL_METHODS.resolveSlash(pthn.substring(GLOBAL_APP_CONFIG.mountpath.length));
       }
@@ -458,14 +474,21 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
       return serveStatic(req, res);
     }
     req.once('respondNow', function(vlm, st) {
-      sendNow(cache.defKey, req, res, evaluate(req, res, cache, methods, vlm), st);
+      sendNow(rvars.defKey, req, res, evaluate(req, res, rvars, methods, vlm), st);
     });
-    curr = forOneObj(req, res, cache, methods, GLOBAL_API.root), vl = GLOBAL_API.root;
+    curr = forOneObj(req, res, rvars, methods, GLOBAL_API.root), vl = GLOBAL_API.root;
     var exitGate = GLOBAL_METHODS.lastValue(GLOBAL_API.root, '_methods', 'exitGate');
-    res.exitGate = typeof exitGate === 'function' ? exitGate.bind(res, cache, methods, req, res) : function() {};
+    res.exitGate = typeof exitGate === 'function' ? exitGate.bind(res, rvars, methods, req, res) : function() {};
     var method = req.method,
       notFound = GLOBAL_METHODS.lastValue.apply(undefined, [GLOBAL_APP_CONFIG].concat(paths.concat(['enable']))) === false;
-    if (paths[0] !== '' && !(notFound)) {
+    if (PARSEABLE.indexOf(method) !== -1) {
+      req.uponParse = true;
+    }
+    if (paths[0] === '') {
+      if (req.uponParse) {
+        methods.parsePayload(rvars.params, req);
+      }
+    } else if (!(notFound)) {
       for (var prk, z = 0; z < pl; z++) {
         prk = paths[z];
         if (prk === '') {
@@ -476,7 +499,7 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
           if (curr[1].indexOf(prk) !== -1) {
             vl = curr[0][prk];
           } else if (curr[2]) {
-            cache.params.path[curr[2]] = prk;
+            rvars.params.path[curr[2]] = prk;
             prk = curr[2];
             vl = curr[0][prk];
           } else {
@@ -484,7 +507,10 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
             notFound = true;
             break;
           }
-          curr = forOneObj(req, res, cache, methods, vl);
+          if (z === pl - 1 && req.uponParse) {
+            methods.parsePayload(rvars.params, req);
+          }
+          curr = forOneObj(req, res, rvars, methods, vl);
           if (curr === 0) {
             return;
           } else if (req.notFound === true) {
@@ -509,7 +535,7 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
         break;
       }
     }
-    resp(((notFound || nf) ? false : method), vl, req, res, cache, methods);
+    resp(((notFound || nf) ? false : method), vl, req, res, rvars, methods);
   };
 
   return handler;

@@ -51,6 +51,9 @@ module.exports = function(what,desc,helpar){
       case '-l':
       case '--evalenabled':
         if(value === true){ options.evalenabled = true; }
+      case '-y':
+      case '--autoparse':
+        if(value === 'false' || value === '0'){ options.autoparse = false; }
       case '-d':
       case '--staticdir':
         if(value){ options.staticdir = value === true ? value : path.join(cwd,value); }

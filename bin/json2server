@@ -90,6 +90,7 @@ function forOneLine(line){
         chr = line.charAt(++reqin);
       }
       if(isBrowser) {
+        if(org.indexOf('server_methods/parsePayload') !== -1) return;
         if(line.indexOf('require') !== -1){
           line = line.replace('require(\''+org+'\')(',function(){ return '('+_String(require(__dirname+requireReplacement(filePath)))+')('; });
         }

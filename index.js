@@ -17,6 +17,7 @@ GLOBAL_METHODS.objwalk = require('./common_methods/objwalk')(GLOBAL_APP_CONFIG, 
 GLOBAL_METHODS.replace = require('./common_methods/replace')(GLOBAL_APP_CONFIG, GLOBAL_METHODS);
 GLOBAL_METHODS.resolveSlash = require('./common_methods/resolveSlash')(GLOBAL_APP_CONFIG, GLOBAL_METHODS);
 GLOBAL_METHODS.stringify = require('./common_methods/stringify')(GLOBAL_APP_CONFIG, GLOBAL_METHODS);
+GLOBAL_METHODS.parsePayload = require('./server_methods/parsePayload')(GLOBAL_APP_CONFIG, GLOBAL_METHODS);
 GLOBAL_METHODS.request = require('./server_methods/request')(GLOBAL_APP_CONFIG, GLOBAL_METHODS);
 
 //CLIENT_METHODS_BLOCK

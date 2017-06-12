@@ -60,7 +60,7 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
     }
     httpRequest.open(method, url, true);
     var contFound = false;
-    if(isObect(options.headers)){
+    if(isObject(options.headers)){
       for(var ky in options.headers){
         if(typeof options.headers[ky] === 'string'){
           if(ky.toLowerCase() === 'content-type'){
