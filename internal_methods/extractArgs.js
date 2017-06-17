@@ -48,7 +48,7 @@ module.exports = function(what,desc,helpar){
       case '-s':
       case '--start':
         if(value === true){ options.start = true; }
-      case '-l':
+      case '-e':
       case '--evalenabled':
         if(value === true){ options.evalenabled = true; }
       case '-y':
@@ -61,6 +61,10 @@ module.exports = function(what,desc,helpar){
       case '-p':
       case '--port':
         if(value){ value = parseInt(value,10); if(value) { options.port = value; } }
+        break;
+      case '-u':
+      case '--url':
+        if(typeof value === 'string'){ options.url = value; }
         break;
       case '-m':
       case '--mountpath':

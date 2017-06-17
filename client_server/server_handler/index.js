@@ -46,7 +46,7 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
   };
 
   var forOneObj = function(rq, rs, rvars, methods, ob, ks) {
-    if (rs.responded) return;
+    if (rs.finished) return;
     if (!ob) return false;
     GLOBAL_METHODS.assign(rvars, ob._vars);
     GLOBAL_METHODS.assign(methods, ob._methods);
@@ -94,7 +94,7 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
             if (typeof vl[n] === 'object' && vl[n]) {
               var ch = function(vl1, vl2, ps) {
                 if (!vl2) vl2 = getErrorWithStatusCode(rvars, 'inval');
-                if (rs.responded) return;
+                if (rs.finished) return;
                 if (ps) {
                   var er = doEval(rq, rs, rvars, methods, vl1);
                   if (!ps || !er) {
@@ -108,7 +108,7 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
                 return ps;
               };
               var bth = function(vls, ps) {
-                if (rs.responded) return;
+                if (rs.finished) return;
                 if (typeof vls.eval === 'string' && vls.eval) {
                   ps = ps && ch(vls.eval, vls.ifFailed, ps);
                 }
@@ -213,7 +213,7 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
   }
 
   function evaluate(req, res, rvars, methods, obj, next) {
-    if (res.responded) return;
+    if (res.finished) return;
     var isAsync = typeof next === 'function',
       isFunc = false,
       pms = [];
@@ -273,10 +273,7 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
   }
 
   function sendNow(defKey, req, res, val, st) {
-    if (res.hasOwnProperty('responded')) {
-      return;
-    }
-    res.responded = true;
+    if (res.finished) return;
     req.removeAllListeners();
     if (val === undefined || val === null) {
       val = 'SUCCESS';
@@ -301,12 +298,12 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
   }
 
   function resp(method, curr, req, res, rvars, methods) {
-    if (res.responded) return;
+    if (res.finished) return;
     var next = sendNow.bind(null, rvars.defKey, req, res);
     var evaling = function(ml) {
       var af = function(dt, num, noev) {
         var nxt = next;
-        if (res.responded) return;
+        if (res.finished) return;
         if (dt !== undefined) rvars.currentData = dt;
         return evaluate(req, res, rvars, methods, ml, nxt);
       };

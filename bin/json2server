@@ -47,7 +47,8 @@ if(options.buildvars){
 var FILE_STR = [], FileArr = NodeFs.readFileSync(__dirname+'/../index.js').toString().split('\n');
 var serverFlag = false, notInFile = false;
 
-if(options.start || (!options.outfile && !options.struct && !options.browser)){
+if(options.start || options.url || (!options.outfile && !options.struct && !options.browser)){
+  if(options.url) { conf.url = options.url; }
   return mainFile(conf,options.jsonpath,options.rootdir)();
 }
 

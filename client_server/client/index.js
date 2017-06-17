@@ -81,6 +81,8 @@ module.exports = function(GLOBAL_APP_CONFIG,GLOBAL_METHODS){
 
   function server(handler,config,GLOBAL_API){
     if(!mainHandler) mainHandler = handler;
+    var onReady = GLOBAL_METHODS.lastValue(GLOBAL_API, 'root', '_methods', 'onReady');
+    if(typeof onReady === 'function'){ onReady(); }
     window.topath();
   };
 
