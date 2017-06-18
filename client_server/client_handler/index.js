@@ -104,7 +104,7 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
               var ch = function(vl1, vl2, ps) {
                 if (!vl2) vl2 = getErrorWithStatusCode(rvars, 'inval');
                 if (ps) {
-                  var er = doEval(rq, rs, rvars, methods, vl1);
+                  var er = doEval(rq, rs, rvars, methods, vl1) !== false;
                   if (!ps || !er) {
                     ps = false;
                     sendNow(rvars.defKey, rq, rs, evaluate(rq, rs, rvars, methods, vl2), 400);
@@ -164,9 +164,9 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
   };
 
   function doEval(req, res, rvars, methods, obj, bool, nocall) {
-    var ret = obj;
+    var ret = obj,
+      valn = evaluate(req, res, rvars, methods, ret);
     if (typeof ret === 'string' && nocall !== true) {
-      var valn = evaluate(req, res, rvars, methods, ret);
       if (typeof valn === 'string' && valn.indexOf('{{') !== -1 && valn.indexOf('}}') !== -1) {
         return false;
       }
@@ -174,10 +174,12 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
     }
     if (GLOBAL_APP_CONFIG.evalenabled !== false) {
       try {
-        ret = eval(nocall ? obj : evaluate(req, res, rvars, methods, obj));
+        ret = eval(nocall ? obj : valn);
       } catch (erm) {
         if (bool) return false;
       }
+    } else {
+      ret = valn
     }
     return bool ? Boolean(ret) : ret;
   }
