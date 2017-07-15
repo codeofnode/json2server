@@ -1,9 +1,14 @@
 
 module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
 
-  const START_VAR = '{{', END_VAR = '}}', SVAR_L = 2, EVAR_L = 2,
-        NOT_FOUND_MSG = 'VAR_NOT_FOUND',
-        VAR_REG = /(\{\{[a-zA-Z0-9\$\.\_]+\}\})+/g;
+  if (typeof GLOBAL_APP_CONFIG !== 'object' || GLOBAL_APP_CONFIG === null) GLOBAL_APP_CONFIG = {};
+
+  const START_VAR = GLOBAL_APP_CONFIG.startvar || '{{',
+        END_VAR =  GLOBAL_APP_CONFIG.endvar || '}}',
+        SVAR_L = START_VAR.length, EVAR_L = END_VAR.length,
+        NOT_FOUND_MSG = GLOBAL_APP_CONFIG.notfoundvalue || 'VAR_NOT_FOUND',
+        FUNC_KEY = GLOBAL_APP_CONFIG.functionkey || '@',
+        VAR_REG = GLOBAL_APP_CONFIG.variableregex || /(\{\{[a-zA-Z0-9\$\.\_]+\}\})+/g;
 
   const WALK_INTO = GLOBAL_METHODS.objwalk,
         IS_ALPHA_NUM = GLOBAL_METHODS.isAlphaNum,
@@ -92,15 +97,15 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
 
   function handleFunction(inp,vars,methods){
     if(typeof inp === 'object' && inp) {
-      if(typeof methods === 'object' && (typeof inp['@'] === 'string') &&
-          IS_ALPHA_NUM(inp['@']) && (typeof methods[inp['@']] === 'function')){
+      if(typeof methods === 'object' && (typeof inp[FUNC_KEY] === 'string') &&
+          IS_ALPHA_NUM(inp[FUNC_KEY]) && (typeof methods[inp[FUNC_KEY]] === 'function')){
         var pms = (typeof inp.params === 'object' && inp.params !== null) ? ASSIGN(false,inp.params) : inp.params;
         var params = deepReplace(pms,vars,methods);
         if(!(Array.isArray(params))){
           params = [params];
         }
         params.unshift(vars,methods);
-        return methods[inp['@']].apply(null, params);
+        return methods[inp[FUNC_KEY]].apply(null, params);
       }
     }
     return inp;
