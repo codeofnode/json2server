@@ -1,14 +1,21 @@
 
 module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
-  const maxobjdepth = (GLOBAL_APP_CONFIG && GLOBAL_APP_CONFIG.maxobjdepth) || 99;
+  if (typeof GLOBAL_APP_CONFIG !== 'object' || GLOBAL_APP_CONFIG === null) GLOBAL_APP_CONFIG = {};
+  const maxobjdepth = GLOBAL_APP_CONFIG.maxobjdepth || 99;
+  const endvar = GLOBAL_APP_CONFIG.walkendkey || '$W_END';
 
-  const getNested = function(obj, depth) {
-    return ((depth < maxobjdepth && typeof obj === 'object' && obj !== null && obj.$W_END !== true) ? obj : false);
+  let ifEndForObjWalk = GLOBAL_METHODS && GLOBAL_METHODS.ifEndForObjWalk;
+  if(typeof ifEndForObjWalk !== 'function') {
+   ifEndForObjWalk = function(obj, depth) {
+      return ((depth < maxobjdepth && typeof obj === 'object'
+        && obj !== null && obj[endvar] !== true) ? obj : false);
+    };
   };
 
-  const walkInto = function(fun, rt, obj, key, depth = 0, isLast = true) {
-    fun(obj, key, rt, depth, isLast);
-    const ob = getNested(obj, depth);
+  const walkInto = function(fun, rt, obj, key, depth, isLast) {
+    if(!depth) depth = 0;
+    fun(obj, key, rt, depth || 0, typeof isLast === 'boolean' ? isLast : true);
+    const ob = ifEndForObjWalk(obj, depth);
     if (ob) {
       const kys = Object.keys(ob);
       const lastln = kys.length;
