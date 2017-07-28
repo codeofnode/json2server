@@ -421,6 +421,7 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
       pthn = parsed.pathname || '';
     var rvars = getNewVars(),
       methods = {};
+    rvars.params.query = parsed.query;
     methods = GLOBAL_METHODS;
     if (typeof GLOBAL_APP_CONFIG.mountpath === 'string') {
       if (pthn.indexOf(GLOBAL_APP_CONFIG.mountpath) !== 0) {
