@@ -1,6 +1,6 @@
 {
   "name": "json2server",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "description": "Provide a json to ready a server. It has routes, validations and more.",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
