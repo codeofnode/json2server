@@ -6,7 +6,7 @@
     },
     "errors" :{
       "500" : {
-        "{{defKey}}":"An unknown error has been occurred. Please contact us at {{supportEmail}}",
+        "{{defKey}}":"An unknown error has been occurred. Please contact at {{contactEmail}}",
         "status" : 500
       },
       "408" : {
@@ -30,7 +30,7 @@
         "status" : 400
       }
     },
-    "supportEmail" : "support@yourdomain.com",
+    "contactEmail" : "mail@yourdomain.com",
     "defTimeout":18000,
     "defKey" : "_"
   },

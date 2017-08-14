@@ -461,6 +461,8 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
       methods = {};
     rvars.params.query = parsed.query;
     GLOBAL_METHODS.assign(methods, GLOBAL_METHODS);
+    var exitGate = GLOBAL_METHODS.lastValue(GLOBAL_API.root, '_methods', 'exitGate');
+    res.exitGate = typeof exitGate === 'function' ? exitGate.bind(res, rvars, methods, req, res) : function() {};
     if (typeof GLOBAL_APP_CONFIG.mountpath === 'string') {
       if (pthn.indexOf(GLOBAL_APP_CONFIG.mountpath) !== 0) {
         return resp(false, curr, req, res, rvars, methods);
@@ -477,8 +479,6 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
       sendNow(rvars.defKey, req, res, evaluate(req, res, rvars, methods, vlm), st);
     });
     curr = forOneObj(req, res, rvars, methods, GLOBAL_API.root), vl = GLOBAL_API.root;
-    var exitGate = GLOBAL_METHODS.lastValue(GLOBAL_API.root, '_methods', 'exitGate');
-    res.exitGate = typeof exitGate === 'function' ? exitGate.bind(res, rvars, methods, req, res) : function() {};
     var method = req.method,
       notFound = GLOBAL_METHODS.lastValue.apply(undefined, [GLOBAL_APP_CONFIG].concat(paths.concat(['enable']))) === false;
     if (PARSEABLE.indexOf(method) !== -1) {

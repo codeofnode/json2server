@@ -57,7 +57,7 @@ module.exports = function(ModuleDir,apiFile, startFile){
       var ph =path.join.apply(path, ls.concat(['_methods', ky, 'index.js']));
       if(!(fs.existsSync(ph))) {
         try {
-          fs.writeFileSync(ph, 'module.exports = function(GLOBAL_APP_CONFIG,GLOBAL_METHODS,GLOBAL_VARS,GLOBAL_API){\n\nfunction func(vars,methods,req,res){\n\n}\n\nreturn func;\n\n}\n');
+          fs.writeFileSync(ph, '\nmodule.exports = function MainBlock(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL_API) {\n  function func(vars, methods, req, res) {\n  }\n  return func;\n};\n');
         } catch(erm){
         }
       }

@@ -35,7 +35,7 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
       var server = isHttps ? mod.createServer(httpsConfig, handler) : mod.createServer(handler);
       server.listen(parseInt(port, 10),function(){
         var onReady = GLOBAL_METHODS.lastValue(GLOBAL_API, 'root', '_methods', 'onReady');
-        if(typeof onReady === 'function'){ onReady(); }
+        if(typeof onReady === 'function'){ onReady(server); }
       });
 
       console.log("Server running at\n  => http://localhost:" + port + "/\nCTRL + C to shutdown");
