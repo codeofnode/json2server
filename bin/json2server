@@ -29,7 +29,7 @@ if(isBrowser){
 var conf = {};
 try {
   conf = require(options.configpath || (process.cwd()+'/'+(isBrowser ? 'j2c.json' : 'j2s.json')));
-} catch(er){ console.log(er); }
+} catch(er){ }
 if(options.staticdir || options.port || options.mountpath){
   if(options.port) conf.port = options.port;
   if(options.staticdir) conf.staticdir = options.staticdir;
@@ -154,8 +154,6 @@ if(options.outfile){
   try {
     fromJsonReq = require(fromJsonReq);
   } catch(er){
-    console.log('WARNING : json not loaded.');
-    console.log(er);
     fromJsonReq = {};
   }
 

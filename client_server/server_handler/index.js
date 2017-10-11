@@ -461,6 +461,10 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
       methods = {};
     rvars.params.query = parsed.query;
     GLOBAL_METHODS.assign(methods, GLOBAL_METHODS);
+    var entryGate = GLOBAL_METHODS.lastValue(GLOBAL_API.root, '_methods', 'entryGate');
+    if (typeof entryGate === 'function') {
+      entryGate(rvars, methods, req, res);
+    }
     var exitGate = GLOBAL_METHODS.lastValue(GLOBAL_API.root, '_methods', 'exitGate');
     res.exitGate = typeof exitGate === 'function' ? exitGate.bind(res, rvars, methods, req, res) : function() {};
     if (typeof GLOBAL_APP_CONFIG.mountpath === 'string') {

@@ -44,10 +44,7 @@ function func(CONFIG_PATH, JSON_PATH, ROOT_DIR_PATH, GLOBAL_VARS, GLOBAL_API) {
   //_ONLY_SERVER
   try {
     fromConfigReq = require((typeof CONFIG_PATH === 'string' && CONFIG_PATH.length) ? CONFIG_PATH : (process.cwd() + '/j2s.json'));
-  } catch (erm) {
-    console.log('WARNING : j2s.json not loaded.');
-    console.log(erm);
-  }
+  } catch (erm) {}
   //_ONLY_SERVER_END
   ASSIGN(GLOBAL_APP_CONFIG, fromConfigReq, CONFIG_PATH);
   //END_NOT_IN_FILE
@@ -76,8 +73,7 @@ function func(CONFIG_PATH, JSON_PATH, ROOT_DIR_PATH, GLOBAL_VARS, GLOBAL_API) {
     try {
       fromJsonReq = require((typeof JSON_PATH === 'string' && JSON_PATH.length) ? JSON_PATH : (process.cwd() + '/server.json'));
     } catch (erm) {
-      console.log('WARNING : server.json not loaded.');
-      console.log(erm);
+      console.log('json2server WARNING : server json file not loaded. ' + erm.message);
     }
     //_ONLY_SERVER_END
     ASSIGN(MAINS, fromJsonReq, JSON_PATH);
