@@ -407,8 +407,7 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
     try {
       nodeFs.accessSync(pth, nodeFs.constants.R_OK);
     } catch (err) {
-      console.log(' >>>> Static path not available for static server.');
-      console.log(err);
+      console.log('json2server > WARNING: Static path not available for static server.', err.message || err);
       return;
     }
     this.staticDir = pth;
