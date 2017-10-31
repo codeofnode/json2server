@@ -209,7 +209,7 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
     var methodName = "";
     for(var i = 0; i < methods.length; i++){
       methodName = extractMethodName(methods[i]);
-      if(typeof methodsMap[methodName] === 'function'){
+      if(methodsMap && typeof methodsMap[methodName] === 'function'){
         str = replaceMethod(str, methods[i], methodName, methodsMap[methodName], methodsMap);
       }
     }
