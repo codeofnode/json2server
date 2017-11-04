@@ -46,6 +46,7 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
   }
 
   function getVarVal(varVal, varName, variablesMap){
+    if (typeof variablesMap !== 'object' || variablesMap === null) return varVal;
     if(variablesMap.hasOwnProperty(varName)){
       return variablesMap[varName];
     }
