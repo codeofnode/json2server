@@ -21,7 +21,7 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
     } else if (isObject(options)) {
       url = options.url;
       method = options.method;
-      payload = options.payload;
+      payload = typeof options.body === 'undefined' ? options.payload : options.body;
       headers = options.headers;
       parser = typeof options.parser === 'function' ? options.parser : JSON.parse;
     } else {
