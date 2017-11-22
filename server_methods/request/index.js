@@ -16,7 +16,6 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
     }
     if (typeof options === 'string') {
       url = options;
-      method = 'GET';
       parser = JSON.parse;
     } else if (isObject(options)) {
       url = options.url;
@@ -31,7 +30,7 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
       return cb('URL_NOT_FOUND');
     }
     if (typeof method !== 'string' || !method.length) {
-      return cb('METHOD_NOT_FOUND');
+      method = 'GET';
     }
     var contFound = false,obj = urlp.parse(url);
     obj.method = method;
