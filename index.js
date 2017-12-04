@@ -123,7 +123,7 @@ function func(CONFIG_PATH, JSON_PATH, ROOT_DIR_PATH, GLOBAL_VARS, GLOBAL_API) {
 
   var onLoad = GLOBAL_METHODS.lastValue(GLOBAL_API, 'root', '_methods', 'onLoad');
   if (typeof onLoad === 'function') {
-    onLoad();
+    onLoad(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL_API);
   }
   start.api = GLOBAL_API;
   start.config = GLOBAL_APP_CONFIG;

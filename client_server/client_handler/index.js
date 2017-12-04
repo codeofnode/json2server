@@ -424,70 +424,86 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
     rvars.params.query = parsed.query;
     methods = GLOBAL_METHODS;
     var entryGate = GLOBAL_METHODS.lastValue(GLOBAL_API.root, '_methods', 'entryGate');
-    if (typeof entryGate === 'function') {
-      entryGate(rvars, methods, req, res);
-    }
-    var exitGate = GLOBAL_METHODS.lastValue(GLOBAL_API.root, '_methods', 'exitGate');
-    res.exitGate = typeof exitGate === 'function' ? exitGate.bind(res, rvars, methods, req, res) : function() {};
-    if (typeof GLOBAL_APP_CONFIG.mountpath === 'string') {
-      if (pthn.indexOf(GLOBAL_APP_CONFIG.mountpath) !== 0) {
-        return resp(false, curr, req, res, rvars, methods);
-      } else {
-        pthn = GLOBAL_METHODS.resolveSlash(pthn.substring(GLOBAL_APP_CONFIG.mountpath.length));
-      }
-    }
-    var paths = pthn.substring(1).split('/'),
-      pl = paths.length;
-    req.once('respondNow', function(vlm, st) {
-      sendNow(rvars.defKey, req, res, evaluate(req, res, rvars, methods, vlm), st);
-    });
-    curr = forOneObj(req, res, rvars, methods, GLOBAL_API.root), vl = GLOBAL_API.root;
-    var method = req.method,
-      notFound = GLOBAL_METHODS.lastValue.apply(undefined, [GLOBAL_APP_CONFIG].concat(paths.concat(['enable']))) === false;
-    if (paths[0] === '') {} else if (!(notFound)) {
-      for (var prk, z = 0; z < pl; z++) {
-        prk = paths[z];
-        if (prk === '') {
-          method = '>';
-          break;
+
+    function afterEntry() {
+      var exitGate = GLOBAL_METHODS.lastValue(GLOBAL_API.root, '_methods', 'exitGate');
+      res.exitGate = typeof exitGate === 'function' ? exitGate.bind(res, rvars, methods, req, res) : function() {};
+      if (typeof GLOBAL_APP_CONFIG.mountpath === 'string') {
+        if (pthn.indexOf(GLOBAL_APP_CONFIG.mountpath) !== 0) {
+          return resp(false, curr, req, res, rvars, methods);
+        } else {
+          pthn = GLOBAL_METHODS.resolveSlash(pthn.substring(GLOBAL_APP_CONFIG.mountpath.length));
         }
-        if (curr) {
-          if (curr[1].indexOf(prk) !== -1) {
-            vl = curr[0][prk];
-          } else if (curr[2]) {
-            rvars.params.path[curr[2]] = prk;
-            prk = curr[2];
-            vl = curr[0][prk];
+      }
+      var paths = pthn.substring(1).split('/'),
+        pl = paths.length;
+      req.once('respondNow', function(vlm, st) {
+        sendNow(rvars.defKey, req, res, evaluate(req, res, rvars, methods, vlm), st);
+      });
+      curr = forOneObj(req, res, rvars, methods, GLOBAL_API.root), vl = GLOBAL_API.root;
+      var method = req.method,
+        notFound = GLOBAL_METHODS.lastValue.apply(undefined, [GLOBAL_APP_CONFIG].concat(paths.concat(['enable']))) === false;
+      if (paths[0] === '') {} else if (!(notFound)) {
+        for (var prk, z = 0; z < pl; z++) {
+          prk = paths[z];
+          if (prk === '') {
+            method = '>';
+            break;
+          }
+          if (curr) {
+            if (curr[1].indexOf(prk) !== -1) {
+              vl = curr[0][prk];
+            } else if (curr[2]) {
+              rvars.params.path[curr[2]] = prk;
+              prk = curr[2];
+              vl = curr[0][prk];
+            } else {
+              notFound = true;
+              break;
+            }
+            curr = forOneObj(req, res, rvars, methods, vl);
+            if (curr === 0) {
+              return;
+            } else if (req.notFound === true) {
+              curr = false;
+              notFound = true;
+              break;
+            }
           } else {
             notFound = true;
             break;
           }
-          curr = forOneObj(req, res, rvars, methods, vl);
-          if (curr === 0) {
-            return;
-          } else if (req.notFound === true) {
-            curr = false;
-            notFound = true;
-            break;
-          }
-        } else {
-          notFound = true;
+        }
+      }
+      var nf = true,
+        vlk = Object.keys(vl),
+        vlkl = vlk.length;
+      for (var z = 0; z < vlkl; z++) {
+        if (vlk[z].charAt(0) === '$' || vlk[z].charAt(0) === '>') {
+          nf = false;
           break;
         }
       }
+      req.pathFound = notFound;
+      req.methodFound = nf;
+      resp(((notFound || nf) ? false : method), vl, req, res, rvars, methods);
     }
-    var nf = true,
-      vlk = Object.keys(vl),
-      vlkl = vlk.length;
-    for (var z = 0; z < vlkl; z++) {
-      if (vlk[z].charAt(0) === '$' || vlk[z].charAt(0) === '>') {
-        nf = false;
-        break;
+    if (typeof entryGate === 'function') {
+      var entryResp = entryGate(rvars, methods, req, res);
+      if (entryResp) {
+        if (entryResp instanceof Promise) {
+          entryResp.then(afterEntry).catch(function(vlm) {
+            sendNow(rvars.defKey, req, res, evaluate(req, res, rvars, methods, vlm), 503);
+          });
+        } else {
+          sendNow(rvars.defKey, req, res, evaluate(req, res, rvars, methods, entryResp), 503);
+        }
+      } else {
+        afterEntry();
       }
+    } else {
+      afterEntry();
     }
-    req.pathFound = notFound;
-    req.methodFound = nf;
-    resp(((notFound || nf) ? false : method), vl, req, res, rvars, methods);
   };
 
   return handler;
