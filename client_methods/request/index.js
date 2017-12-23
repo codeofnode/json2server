@@ -58,22 +58,28 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
       }
     }
     httpRequest.open(method, url, true);
-    var contFound = false;
+    var contFound = false, contLenFound = false;
     if(isObject(options.headers)){
       for(var ky in options.headers){
         if(typeof options.headers[ky] === 'string'){
           if(ky.toLowerCase() === 'content-type'){
             contFound = true;
           }
+          if(ky.toLowerCase() === 'content-length'){
+            contLenFound = true;
+          }
           httpRequest.setRequestHeader(ky, options.headers[ky]);
         }
       }
     }
-    if(!(contFound)){
-      httpRequest.setRequestHeader('content-type', 'application/json');
-    }
     if (payload !== undefined) {
       payload = GLOBAL_METHODS.stringify(payload);
+      if(!(contFound)){
+        httpRequest.setRequestHeader('content-type', 'application/json');
+      }
+      if(!(contLenFound)){
+        httpRequest.setRequestHeader('content-length', payload.length);
+      }
       httpRequest.send(payload);
     } else {
       httpRequest.send();

@@ -32,7 +32,7 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
     if (typeof method !== 'string' || !method.length) {
       method = 'GET';
     }
-    var contFound = false,obj = urlp.parse(url);
+    var contFound = false, contLenFound = false, obj = urlp.parse(url);
     obj.method = method;
     if(typeof headers !== 'object' || headers === null){
       headers = {};
@@ -40,11 +40,12 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
     for(var key in headers){
       if(key.toLowerCase() === 'content-type'){
         contFound = true;
-        break;
+        if (contLenFound) break;
       }
-    }
-    if(!contFound){
-      headers['content-type'] = 'application/json';
+      if(key.toLowerCase() === 'content-length'){
+        contLenFound = true;
+        if (contFound) break;
+      }
     }
     obj.headers = headers;
     var req = (obj.protocol === 'https:' ? https : http).request(obj, function(res) {
@@ -80,6 +81,12 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
     });
     if (payload !== undefined) {
       payload = GLOBAL_METHODS.stringify(payload);
+      if (!contFound){
+        req.setHeader('content-type', 'application/json');
+      }
+      if (!contLenFound) {
+        req.setHeader('content-length', Buffer.byteLength(payload));
+      }
       req.end(payload);
     } else if (options.payloadStream instanceof fs.ReadStream) {
       var mo = (isObject(options.multipartOptions) ? options.multipartOptions : {});
@@ -88,7 +95,7 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
       }
       req.setHeader('content-type', 'multipart/form-data; boundary="----'+mo.boundaryKey+'"');
       if (mo.contentLength) {
-        req.setHeader('Content-Length', mo.contentLength);
+        req.setHeader('content-length', mo.contentLength);
       }
       if (isObject(mo.formData)) {
         Object.keys(mo.formData).forEach(function(formKey) {
