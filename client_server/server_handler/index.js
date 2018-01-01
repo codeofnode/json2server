@@ -397,7 +397,8 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
     jpg: 'image/jpeg',
     png: 'image/png',
     svg: 'image/svg+xml',
-    js: 'application/javascript'
+    js: 'application/javascript',
+    json: 'application/json'
   };
   var staticServer = false;
   const nodePath = require('path'),
