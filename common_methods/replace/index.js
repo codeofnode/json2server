@@ -2,7 +2,7 @@
 module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
   if (typeof GLOBAL_APP_CONFIG !== 'object' || GLOBAL_APP_CONFIG === null) GLOBAL_APP_CONFIG = {};
 
-  const START_VAR = GLOBAL_APP_CONFIG.startvar || '\{\{',
+  var START_VAR = GLOBAL_APP_CONFIG.startvar || '\{\{',
     END_VAR = GLOBAL_APP_CONFIG.endvar || '\}\}',
     SVAR_L = START_VAR.length,
     EVAR_L = END_VAR.length,
@@ -13,7 +13,7 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
     FUNC_REG = GLOBAL_APP_CONFIG.functionregex
       || new RegExp('\('+START_VAR+'\[a-zA-Z0-9\_\]+\\(\.\*\?\\)'+END_VAR+'\)\+', 'g');
 
-  const WALK_INTO = GLOBAL_METHODS.objwalk,
+  var WALK_INTO = GLOBAL_METHODS.objwalk,
     IS_ALPHA_NUM = GLOBAL_METHODS.isAlphaNum,
     ASSIGN = GLOBAL_METHODS.assign;
 

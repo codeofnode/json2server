@@ -1,9 +1,9 @@
 module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
 
-const QS = require('querystring');
+var QS = require('querystring');
 
-const PARSE = function(data,hdr) {
-  let parser = JSON;
+var PARSE = function(data,hdr) {
+  var parser = JSON;
   if(hdr.indexOf('form-urlencoded') !== -1){
     parser = QS;
   }
@@ -15,9 +15,9 @@ const PARSE = function(data,hdr) {
 };
 
 function func(vars,req){
-  const prs = vars.body;
+  var prs = vars.body;
   if(req.uponParse && typeof prs === 'object' && prs !== null && Object.keys(prs).length === 0) {
-    let data = '';
+    var data = '';
     req.on('data', function(chk){ data += chk });
     function onceOver(){
       vars.body = data ? PARSE(data,GLOBAL_METHODS.lastValue(req, 'headers', 'content-type')) : {};

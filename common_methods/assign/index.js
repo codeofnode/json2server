@@ -1,7 +1,7 @@
 
 module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
 
-  const baseTypes = ['string','number','boolean','undefined'];
+  var baseTypes = ['string','number','boolean','undefined'];
 
   function func(ab,bb,noob){
     if(typeof ab !== 'object' || !ab) ab = Array.isArray(bb) ? new Array(bb.length) : {};

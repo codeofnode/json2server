@@ -1,5 +1,5 @@
 
-const NodeFs = require('fs'), NodePath = require('path'),
+var NodeFs = require('fs'), NodePath = require('path'),
       isAlphaNum = require('./../common_methods/isAlphaNum')();
 
 module.exports = function(getCurr, ROOT_DIR_PATH, forMod, forVar, N_REG){
@@ -29,7 +29,7 @@ module.exports = function(getCurr, ROOT_DIR_PATH, forMod, forVar, N_REG){
     var ms = [];
     try { ms = NodeFs.readdirSync(NodePath.join.apply(NodePath, pths)).filter(N_REG); } catch(erm){ return; }
     pths.shift();
-    ms.forEach((ms)=>{ forOneModule(pths.concat([ms])); });
+    ms.forEach(function(ms){ forOneModule(pths.concat([ms])); });
   };
 
   forOneModule();

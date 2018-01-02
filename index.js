@@ -1,11 +1,11 @@
 var GLOBAL_APP_CONFIG = {},
   GLOBAL_METHODS = {};
 //_ONLY_SERVER
-const NodePath = require('path'),
+var NodePath = require('path'),
   NodeFs = require('fs');
 //_ONLY_SERVER_END
 //NO_OUT_FILE
-const Iterate = require('./internal_methods/iterateRecursive');
+var Iterate = require('./internal_methods/iterateRecursive');
 //END_NO_OUT_FILE
 
 
@@ -24,12 +24,12 @@ GLOBAL_METHODS.request = require('./server_methods/request')(GLOBAL_APP_CONFIG, 
 
 Object.freeze(GLOBAL_METHODS);
 
-const SERVER = require('./client_server/server'),
+var SERVER = require('./client_server/server'),
   HANDLER = require('./client_server/server_handler'),
   ENGINE = SERVER(GLOBAL_APP_CONFIG, GLOBAL_METHODS);
 
 function func(CONFIG_PATH, JSON_PATH, ROOT_DIR_PATH, GLOBAL_VARS, GLOBAL_API) {
-  const ASSIGN = GLOBAL_METHODS.assign,
+  var ASSIGN = GLOBAL_METHODS.assign,
     REPL = GLOBAL_METHODS.replace,
     lastValue = GLOBAL_METHODS.lastValue,
     N_REG = GLOBAL_METHODS.isAlphaNum;

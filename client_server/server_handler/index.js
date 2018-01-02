@@ -1,6 +1,6 @@
 module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL_API) {
-  const IS_ALPHA_NUM = GLOBAL_METHODS.isAlphaNum;
-  const S_VARS = JSON.stringify(GLOBAL_VARS);
+  var IS_ALPHA_NUM = GLOBAL_METHODS.isAlphaNum;
+  var S_VARS = JSON.stringify(GLOBAL_VARS);
   var PARSEABLE = (GLOBAL_APP_CONFIG.autoparse !== false) ? ['POST', 'PUT', 'PATCH', 'DELETE'] : [];
 
   function fromSource(src, after) {
@@ -389,7 +389,7 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
     evaling(getErrorWithStatusCode(rvars, notFoundCode));
   }
 
-  const MIME_TYPE = {
+  var MIME_TYPE = {
     html: 'text/html',
     txt: 'text/plain',
     css: 'text/css',
@@ -401,7 +401,7 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
     json: 'application/json'
   };
   var staticServer = false;
-  const nodePath = require('path'),
+  var nodePath = require('path'),
     nodeFs = require('fs');
 
   function stServer(pth) {

@@ -3,7 +3,7 @@ var fs = require('fs');
 var GLOBAL_METHODS=require('./../index.js').methods;
 var doneMap = {};
 
-const N_REG = GLOBAL_METHODS.isAlphaNum;
+var N_REG = GLOBAL_METHODS.isAlphaNum;
 
 var kys = ['+','=','$', '$get', '$post', '$put', '$delete', '$options', '>', '$patch', '*'];
 
@@ -28,7 +28,7 @@ module.exports = function(ModuleDir,apiFile, startFile){
     var pths = [ModuleDir];
     if(!(Array.isArray(bs))) bs = [];
     pths = pths.concat(bs);
-    var ls = Object.assign([],pths);
+    var ls = GLOBAL_METHODS.assign(false,pths);
     if(ls[ls.length-1] && ls[ls.length-1].charAt(0) === ':'){
       ls[ls.length-1] = ls[ls.length-1].substring(1);
     }
@@ -65,7 +65,7 @@ module.exports = function(ModuleDir,apiFile, startFile){
     var ms = [],_ms = {};
     pths.shift();
     ls.shift();
-    var nls = Object.assign([],ls);
+    var nls = GLOBAL_METHODS.assign(false,ls);
     try {
       Object.keys(GLOBAL_METHODS.lastValue.apply(null, [MAINS.root].concat(nls))).forEach(function(m){
         var _m = m;

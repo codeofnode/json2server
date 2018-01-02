@@ -1,21 +1,21 @@
 #! /usr/bin/env node
 
 var options = require('./../internal_methods/extractArgs')('json2server','Build your server/client with a json file', []);
-const ASSIGN = require('./../common_methods/assign')();
-const NodeFs = require('fs');
-const Iterate = require('./../internal_methods/iterateRecursive');
-const CreateMethod = require('./../internal_methods/createMethodFile');
-const struct = require('./../internal_methods/makeStruct');
-const ReadFromFile = require('./../internal_methods/readFromFile');
-const N_REG = require('./../common_methods/isAlphaNum')();
-const lastValue = require('./../common_methods/lastValue')();
-const objWalk = require('./../common_methods/objwalk')();
-const REPL = require('./../common_methods/replace')({},{
+var ASSIGN = require('./../common_methods/assign')();
+var NodeFs = require('fs');
+var Iterate = require('./../internal_methods/iterateRecursive');
+var CreateMethod = require('./../internal_methods/createMethodFile');
+var struct = require('./../internal_methods/makeStruct');
+var ReadFromFile = require('./../internal_methods/readFromFile');
+var N_REG = require('./../common_methods/isAlphaNum')();
+var lastValue = require('./../common_methods/lastValue')();
+var objWalk = require('./../common_methods/objwalk')();
+var REPL = require('./../common_methods/replace')({},{
   objwalk : objWalk, isAlphaNum : N_REG, assign : ASSIGN });
 
-const mainFile = require('./../index');
+var mainFile = require('./../index');
 
-const isBrowser = Boolean(options.browser);
+var isBrowser = Boolean(options.browser);
 if(isBrowser){
   if(!options.outfile){
     if(typeof options.browser === 'string'){

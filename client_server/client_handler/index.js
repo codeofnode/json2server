@@ -1,5 +1,5 @@
 module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL_API) {
-  const IS_ALPHA_NUM = GLOBAL_METHODS.isAlphaNum;
+  var IS_ALPHA_NUM = GLOBAL_METHODS.isAlphaNum;
   var S_VARS = GLOBAL_VARS;
 
   function fromSource(src, after) {

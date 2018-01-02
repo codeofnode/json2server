@@ -1,10 +1,10 @@
 
 module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
   if (typeof GLOBAL_APP_CONFIG !== 'object' || GLOBAL_APP_CONFIG === null) GLOBAL_APP_CONFIG = {};
-  const maxobjdepth = GLOBAL_APP_CONFIG.maxobjdepth || 99;
-  const endvar = GLOBAL_APP_CONFIG.walkendkey || '$W_END';
+  var maxobjdepth = GLOBAL_APP_CONFIG.maxobjdepth || 99;
+  var endvar = GLOBAL_APP_CONFIG.walkendkey || '$W_END';
 
-  let ifEndForObjWalk = GLOBAL_METHODS && GLOBAL_METHODS.ifEndForObjWalk;
+  var ifEndForObjWalk = GLOBAL_METHODS && GLOBAL_METHODS.ifEndForObjWalk;
   if(typeof ifEndForObjWalk !== 'function') {
    ifEndForObjWalk = function(obj, depth) {
       return ((depth < maxobjdepth && typeof obj === 'object'
@@ -13,10 +13,10 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
     };
   };
 
-  let isPOJO = GLOBAL_METHODS && GLOBAL_METHODS.isPOJO;
+  var isPOJO = GLOBAL_METHODS && GLOBAL_METHODS.isPOJO;
   if(typeof isPOJO !== 'function') {
-    const ProtoObj = Object.prototype;
-    const getProtOf = Object.getPrototypeOf;
+    var ProtoObj = Object.prototype;
+    var getProtOf = Object.getPrototypeOf;
 
     isPOJO = function func(obj){
       if (obj === null || typeof obj !== 'object') {
@@ -26,15 +26,15 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
     };
   };
 
-  const walkInto = function(fun, rt, obj, key, depth, isLast) {
+  var walkInto = function(fun, rt, obj, key, depth, isLast) {
     if(!depth) depth = 0;
     fun(obj, key, rt, depth || 0, typeof isLast === 'boolean' ? isLast : true);
-    const ob = ifEndForObjWalk(obj, depth);
+    var ob = ifEndForObjWalk(obj, depth);
     if (ob) {
-      const kys = Object.keys(ob);
-      const lastln = kys.length - 1;
-      const deep = depth + 1;
-      for (let z = 0; z <= lastln; z += 1) {
+      var kys = Object.keys(ob);
+      var lastln = kys.length - 1;
+      var deep = depth + 1;
+      for (var z = 0; z <= lastln; z += 1) {
         walkInto(fun, ob, ob[kys[z]], kys[z], deep, (z === lastln));
       }
     }
