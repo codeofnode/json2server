@@ -38,7 +38,7 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
         if(typeof onReady === 'function'){ onReady(server); }
       });
 
-      console.log("Server running at\n  => http://localhost:" + port + "/\nCTRL + C to shutdown");
+      console.log('Server running at port ' + port);
     }
   };
 
