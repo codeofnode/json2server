@@ -191,13 +191,14 @@ module.exports = function(what,desc,helpar){
     console.log(helpar.join('\n'));
     process.exit(2);
   } else {
-    if(!options.configpath){
+    if (!options.configpath){
       options.configpath = join(cwd,options.browser?'j2c.json':'j2s.json');
     }
     var read = {};
     try {
       read = require(options.configpath);
     } catch(er){
+      delete options.configpath;
       return options;
     }
     for(var ky in read){

@@ -73,7 +73,7 @@ function func(CONFIG_PATH, JSON_PATH, ROOT_DIR_PATH, GLOBAL_VARS, GLOBAL_API) {
     try {
       fromJsonReq = require((typeof JSON_PATH === 'string' && JSON_PATH.length) ? JSON_PATH : (process.cwd() + '/server.json'));
     } catch (erm) {
-      console.log('json2server > WARNING: server json file not loaded. ', erm.message);
+      //console.log('json2server > WARNING: server json file not loaded. ', erm.message);
     }
     //_ONLY_SERVER_END
     ASSIGN(MAINS, fromJsonReq, JSON_PATH);
