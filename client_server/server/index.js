@@ -28,11 +28,17 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
       handler(req,resp);
       if(method !== 'GET') req.emit('end');
     } else {
-      var isHttps = typeof httpsConfig === 'object' && httpsConfig,
+      var server, isHttps = typeof httpsConfig === 'object' && httpsConfig,
         mod = isHttps ? require('https') : require("http"),
         port =  process.env.PORT || GLOBAL_APP_CONFIG.port || 3000;
 
-      var server = isHttps ? mod.createServer(httpsConfig, handler) : mod.createServer(handler);
+      if (GLOBAL_APP_CONFIG.http2) {
+        mod = require('http2');
+        server = isHttps ? mod.createSecureServer(httpsConfig, handler) : mod.createServer(handler);
+      } else {
+        server = isHttps ? mod.createServer(httpsConfig, handler) : mod.createServer(handler);
+      }
+
       server.listen(parseInt(port, 10),function(){
         var onReady = GLOBAL_METHODS.lastValue(GLOBAL_API, 'root', '_methods', 'onReady');
         if(typeof onReady === 'function'){ onReady(server); }

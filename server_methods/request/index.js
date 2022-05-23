@@ -4,13 +4,15 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
     return typeof ob === 'object' && ob !== null && !(Array.isArray(ob));
   }
 
-  var http = require('http'),
+  var http2 = require('http2'),
+    http = require('http'),
     https = require('https'),
     fs = require('fs'),
     urlp = require('url');
 
   function func(options, cb) {
-    var url, method, payload, headers, parser;
+    // mo = multipart object, ca = ca file path for http2 connect option
+    var url, method, payload, headers, parser, mo, caFile, http2Options;
     if (typeof cb !== 'function') {
       cb = function() {};
     }
@@ -21,8 +23,10 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
       url = options.url;
       method = options.method;
       payload = typeof options.body === 'undefined' ? options.payload : options.body;
+      http2Options = (options.http2Options === true || isObject(options.http2Options)) ? options.http2Options : undefined;
       headers = options.headers;
       parser = typeof options.parser === 'function' ? options.parser : JSON.parse;
+      caFile = typeof options.caFile === 'string' ? fs.readFileSync(options.caFile) : undefined;
     } else {
       return cb('INVALID_OPTIONS');
     }
@@ -32,32 +36,42 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
     if (typeof method !== 'string' || !method.length) {
       method = 'GET';
     }
-    var contFound = false, contLenFound = false, obj = urlp.parse(url);
+    var contFound = false, contLenFound = false, obj = urlp.parse(url), client;
     obj.method = method;
     if(typeof headers !== 'object' || headers === null){
       headers = {};
     }
     for(var key in headers){
-      if(key.toLowerCase() === 'content-type'){
+      if(key.toLowerCase() === http2.constants.HTTP2_HEADER_CONTENT_TYPE){
         contFound = true;
         if (contLenFound) break;
       }
-      if(key.toLowerCase() === 'content-length'){
+      if(key.toLowerCase() === http2.constants.HTTP2_HEADER_CONTENT_LENGTH){
         contLenFound = true;
         if (contFound) break;
       }
     }
     obj.headers = headers;
-    var req = (obj.protocol === 'https:' ? https : http).request(obj, function(res) {
+    if (http2) {
+      client = http2.connect(obj.protocol+"//"+obj.host, { ca: caFile });
+      client.on('error', function(er) { cb({parseError: er}) });
+    }
+    function uponResponse(res) {
       var resc = '';
       res.setEncoding('utf8');
       res.on('data', function(chunk) {
         resc += chunk;
       });
-      function respond(){
+      var capturedHeaders, capturedStatusCode;
+      function capture(headers){
+          capturedHeaders = headers;
+          capturedStatusCode = headers[http2.constants.HTTP2_HEADER_STATUS];
+      }
+      function respond(headers, flags){
+        if (http2) client.close();
         var toSend = {
-          statusCode: res.statusCode,
-          headers : res.headers,
+          statusCode: http2 ? capturedStatusCode : res.statusCode,
+          headers : http2 ? capturedHeaders : res.headers,
           content: resc
         };
         if (typeof parser === 'function') {
@@ -73,30 +87,50 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
           cb(toSend);
         }
       }
-      res.on('error', respond);
+      if (http2) {
+        res.on('response', capture);
+      } else {
+        res.on('error', respond);
+      }
       res.on('end', respond);
-    });
-    req.once('error',function(er){
-      return cb('ERROR_WHILE_REQUEST:'+(er.message||er));
-    });
+    }
     if (payload !== undefined) {
       payload = GLOBAL_METHODS.stringify(payload);
       if (!contFound){
-        req.setHeader('content-type', 'application/json');
+        headers[http2.constants.HTTP2_HEADER_CONTENT_TYPE] = 'application/json';
       }
       if (!contLenFound) {
-        req.setHeader('content-length', Buffer.byteLength(payload));
+        headers[http2.constants.HTTP2_HEADER_CONTENT_LENGTH] = Buffer.byteLength(payload);
       }
-      req.end(payload);
     } else if (options.payloadStream instanceof fs.ReadStream) {
-      var mo = (isObject(options.multipartOptions) ? options.multipartOptions : {});
+      mo = (isObject(options.multipartOptions) ? options.multipartOptions : {});
       if (!(mo.boundaryKey)) {
         mo.boundaryKey = Math.random().toString(16).substr(2, 11);
       }
-      req.setHeader('content-type', 'multipart/form-data; boundary="----'+mo.boundaryKey+'"');
+      headers[http2.constants.HTTP2_HEADER_CONTENT_TYPE] = 'multipart/form-data; boundary="----'+mo.boundaryKey+'"';
       if (mo.contentLength) {
-        req.setHeader('content-length', mo.contentLength);
+        headers[http2.constants.HTTP2_HEADER_CONTENT_LENGTH] = mo.contentLength;
       }
+    }
+    Object.assign(headers, {
+        [http2.constants.HTTP2_HEADER_SCHEME]: obj.protocol.slice(0, -1),
+        [http2.constants.HTTP2_HEADER_METHOD]: obj.method,
+        [http2.constants.HTTP2_HEADER_PATH]: obj.pathname,
+    });
+    var req;
+    if (http2) {
+      req = client.request(headers);
+      uponResponse(req);
+    } else {
+      req = (obj.protocol === 'https:' ? https : http).request(obj, uponResponse);
+      for (var hdrKey in headers) {
+        req.setHeader(hdrKey, headers[hdrKey]);
+      }
+    }
+    req.once('error',function(er){
+      return cb('ERROR_WHILE_REQUEST:'+(er.message||er));
+    });
+    if (mo !== undefined) {
       if (isObject(mo.formData)) {
         Object.keys(mo.formData).forEach(function(formKey) {
           var formValue = mo.formData[formKey];
@@ -109,6 +143,8 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
       options.payloadStream.once('error', function(er){
         return cb('ERROR_WITH_FILE_STREAM:'+(er.message||er));
       });
+    } else if (payload !== undefined) {
+      req.end(Buffer.from(payload));
     } else {
       req.end();
     }

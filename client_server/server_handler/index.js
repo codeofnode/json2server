@@ -45,6 +45,12 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
     }
   };
 
+  var parseRequestPayload = function(req, method, methods, rvars) {
+    if (PARSEABLE.indexOf(method) === -1) return;
+    req.uponParse = true;
+    methods.parsePayload(rvars.params, req);
+  };
+
   var forOneObj = function(rq, rs, rvars, methods, ob, ks) {
     if (rs.finished) return;
     if (!ob) return false;
@@ -488,9 +494,7 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
         req.uponParse = true;
       }
       if (paths[0] === '') {
-        if (req.uponParse) {
-          methods.parsePayload(rvars.params, req);
-        }
+        parseRequestPayload(req, method, methods, rvars);
       } else if (!(notFound)) {
         for (var prk, z = 0; z < pl; z++) {
           prk = paths[z];
@@ -510,8 +514,8 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
               notFound = true;
               break;
             }
-            if (z === pl - 1 && req.uponParse) {
-              methods.parsePayload(rvars.params, req);
+            if (z === pl - 1) {
+              parseRequestPayload(req, method, methods, rvars);
             }
             curr = forOneObj(req, res, rvars, methods, vl);
             if (curr === 0) {

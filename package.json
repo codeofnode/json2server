@@ -1,6 +1,6 @@
 {
   "name": "json2server",
-  "version": "0.1.28",
+  "version": "0.1.29",
   "description": "Provide a json to ready a server. It has routes, validations and more.",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -15,7 +15,7 @@
     "email": "codeofnode@gmail.com"
   },
   "engines": {
-    "node": ">=0.10.48"
+    "node": ">=10.0.0"
   },
   "keywords": [
     "server",

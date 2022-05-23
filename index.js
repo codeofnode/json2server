@@ -39,7 +39,7 @@ function func(CONFIG_PATH, JSON_PATH, ROOT_DIR_PATH, GLOBAL_VARS, GLOBAL_API) {
   var MAINS = {},
     fromConfigReq = {},
     fromJsonReq = {},
-    httsConfig = false;
+    httpsConfig = false;
   //_NOT_IN_FILE
   //_ONLY_SERVER
   try {
@@ -49,22 +49,28 @@ function func(CONFIG_PATH, JSON_PATH, ROOT_DIR_PATH, GLOBAL_VARS, GLOBAL_API) {
   ASSIGN(GLOBAL_APP_CONFIG, fromConfigReq, CONFIG_PATH);
   //END_NOT_IN_FILE
   //_ONLY_SERVER
-  if (typeof GLOBAL_APP_CONFIG.httsConfig === 'object' &&
-    GLOBAL_APP_CONFIG.httsConfig !== null && (!Array.isArray(GLOBAL_APP_CONFIG.httsConfig))) {
-    if (typeof GLOBAL_APP_CONFIG.httsConfig.key === 'string') {
-      httsConfig.key = NodeFs.readFileSync(GLOBAL_APP_CONFIG.httsConfig.key);
+  if (typeof GLOBAL_APP_CONFIG.httpsConfig === 'object' &&
+    GLOBAL_APP_CONFIG.httpsConfig !== null && (!Array.isArray(GLOBAL_APP_CONFIG.httpsConfig))) {
+    httpsConfig = {
+      allowHTTP1: GLOBAL_APP_CONFIG.http2 && GLOBAL_APP_CONFIG.http2.allowHTTP1 === true
     }
-    if (typeof GLOBAL_APP_CONFIG.httsConfig.cert === 'string') {
-      httsConfig.cert = NodeFs.readFileSync(GLOBAL_APP_CONFIG.httsConfig.cert);
+    if (typeof GLOBAL_APP_CONFIG.httpsConfig.key === 'string') {
+      httpsConfig.key = NodeFs.readFileSync(GLOBAL_APP_CONFIG.httpsConfig.key);
     }
-    if (typeof GLOBAL_APP_CONFIG.httsConfig.pfx === 'string') {
-      httsConfig.pfx = NodeFs.readFileSync(GLOBAL_APP_CONFIG.httsConfig.pfx);
+    if (typeof GLOBAL_APP_CONFIG.httpsConfig.cert === 'string') {
+      httpsConfig.cert = NodeFs.readFileSync(GLOBAL_APP_CONFIG.httpsConfig.cert);
     }
-    if (typeof GLOBAL_APP_CONFIG.httsConfig.passphrase === 'string') {
-      httsConfig.passphrase = NodeFs.readFileSync(GLOBAL_APP_CONFIG.httsConfig.passphrase);
+    if (typeof GLOBAL_APP_CONFIG.httpsConfig.pfx === 'string') {
+      httpsConfig.pfx = NodeFs.readFileSync(GLOBAL_APP_CONFIG.httpsConfig.pfx);
+    }
+    if (typeof GLOBAL_APP_CONFIG.httpsConfig.passphrase === 'string') {
+      httpsConfig.passphrase = NodeFs.readFileSync(GLOBAL_APP_CONFIG.httpsConfig.passphrase);
     }
   }
-  delete GLOBAL_APP_CONFIG.httsConfig;
+  delete GLOBAL_APP_CONFIG.httpsConfig;
+  if (GLOBAL_APP_CONFIG.http2) {
+    delete GLOBAL_APP_CONFIG.http2.allowHTTP1;
+  }
   //_ONLY_SERVER_END
   if ((typeof GLOBAL_VARS === 'object' && GLOBAL_VARS !== null && !(Array.isArray(GLOBAL_VARS))) &&
     (typeof GLOBAL_API === 'object' && GLOBAL_API !== null && !(Array.isArray(GLOBAL_API)))) {} else {
@@ -118,7 +124,7 @@ function func(CONFIG_PATH, JSON_PATH, ROOT_DIR_PATH, GLOBAL_VARS, GLOBAL_API) {
   Object.freeze(GLOBAL_API);
 
   function start(hndlr, hc) {
-    ENGINE((hndlr || HANDLER)(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL_API), (hc || httsConfig), GLOBAL_API);
+    ENGINE((hndlr || HANDLER)(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL_API), (hc || httpsConfig), GLOBAL_API);
   }
 
   var onLoad = GLOBAL_METHODS.lastValue(GLOBAL_API, 'root', '_methods', 'onLoad');

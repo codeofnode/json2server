@@ -47,6 +47,12 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
     }
   };
 
+  var parseRequestPayload = function(req, method, methods, rvars) {
+    if (PARSEABLE.indexOf(method) === -1) return;
+    req.uponParse = true;
+    methods.parsePayload(rvars.params, req);
+  };
+
   var forOneObj = function(rq, rs, rvars, methods, ob, ks) {
     if (!ob) return false;
     GLOBAL_METHODS.assign(rvars, ob._vars);
