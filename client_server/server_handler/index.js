@@ -302,7 +302,16 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
     if (vl !== undefined) {
       val = vl;
     }
-    res.end(GLOBAL_METHODS.stringify(val));
+    var stringifiedResponse = GLOBAL_METHODS.stringify(val);
+    var debugVal = Number(GLOBAL_APP_CONFIG.requestResponse && GLOBAL_APP_CONFIG.requestResponse.debug);
+    if (debugVal) {
+      console.log(req.method, req.url, res.statusCode);
+      if (debugVal > 1) {
+        console.log(res.getHeaders());
+        console.log(stringifiedResponse + '\n');
+      }
+    }
+    res.end(stringifiedResponse);
   }
 
   function resp(method, curr, req, res, rvars, methods) {

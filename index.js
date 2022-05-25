@@ -1,4 +1,4 @@
-var GLOBAL_APP_CONFIG = {},
+var GLOBAL_APP_CONFIG = { requestResponse: { debug: process && process.env && process.env.REQRES_DEBUG } },
   GLOBAL_METHODS = {};
 //_ONLY_SERVER
 var NodePath = require('path'),

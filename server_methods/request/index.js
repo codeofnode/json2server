@@ -10,11 +10,25 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
     fs = require('fs'),
     urlp = require('url');
 
-  function func(options, cb) {
+  function func(options, callback) {
     // mo = multipart object, ca = ca file path for http2 connect option
-    var url, method, payload, headers, parser, mo, caFile, http2Options;
-    if (typeof cb !== 'function') {
-      cb = function() {};
+    var url, method, cbCalled, payload, headers, parser, mo, caFile, http2Options;
+    if (typeof callback !== 'function') {
+      callback = function() {};
+    }
+    var debugVal = Number(GLOBAL_APP_CONFIG.requestResponse && GLOBAL_APP_CONFIG.requestResponse.debug);
+    function cb(error, returnObj) {
+      if (cbCalled) return;
+      cbCalled = true;
+      var errMsg = error instanceof Error ? (String(returnObj)+": "+error.message) : error;
+      if (debugVal) {
+        console.log('RES: '+(error ? 'ERROR': 'SUCCESS'), (errMsg || (returnObj && returnObj.statusCode)));
+        if (debugVal > 1) {
+            console.log(error);
+            console.log(returnObj);
+        }
+      }
+      return callback(errMsg, returnObj);
     }
     if (typeof options === 'string') {
       url = options;
@@ -52,9 +66,11 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
       }
     }
     obj.headers = headers;
-    if (http2) {
+    if (http2Options) {
       client = http2.connect(obj.protocol+"//"+obj.host, { ca: caFile });
-      client.on('error', function(er) { cb({parseError: er}) });
+      client.once('error', function(er) { cb(er, "HTTP2_CLIENT_ERR"); });
+    } else {
+      obj.ca = caFile;
     }
     function uponResponse(res) {
       var resc = '';
@@ -68,15 +84,18 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
           capturedStatusCode = headers[http2.constants.HTTP2_HEADER_STATUS];
       }
       function respond(headers, flags){
-        if (http2) client.close();
+        if (http2Options && http2Options.closeClient !== false) client.close();
         var toSend = {
-          statusCode: http2 ? capturedStatusCode : res.statusCode,
-          headers : http2 ? capturedHeaders : res.headers,
+          statusCode: http2Options ? capturedStatusCode : res.statusCode,
+          headers : http2Options ? capturedHeaders : res.headers,
           content: resc
         };
         if (typeof parser === 'function') {
           try {
-            toSend.parsed = parser(resc);
+            if (parser !== JSON.parse || (toSend.headers &&
+                (String(toSend.headers[http2.constants.HTTP2_HEADER_CONTENT_TYPE]).indexOf('json') !== -1))) {
+              toSend.parsed = parser(resc);
+            }
           } catch (er) {
             toSend.parseError = er;
           }
@@ -87,12 +106,12 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
           cb(toSend);
         }
       }
-      if (http2) {
+      if (http2Options) {
         res.on('response', capture);
       } else {
-        res.on('error', respond);
+        res.once('error', respond);
       }
-      res.on('end', respond);
+      res.once('end', respond);
     }
     if (payload !== undefined) {
       payload = GLOBAL_METHODS.stringify(payload);
@@ -112,13 +131,24 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
         headers[http2.constants.HTTP2_HEADER_CONTENT_LENGTH] = mo.contentLength;
       }
     }
-    Object.assign(headers, {
+    if (http2Options) {
+      GLOBAL_METHODS.assign(headers, {
         [http2.constants.HTTP2_HEADER_SCHEME]: obj.protocol.slice(0, -1),
         [http2.constants.HTTP2_HEADER_METHOD]: obj.method,
         [http2.constants.HTTP2_HEADER_PATH]: obj.pathname,
-    });
+      });
+    }
     var req;
-    if (http2) {
+    if (debugVal) {
+      if (debugVal > 1) {
+        console.log('REQ:', method, url, headers, (mo || payload));
+        console.log(headers);
+        console.log(mo || payload);
+      } else {
+        console.log('REQ:', method, url);
+      }
+    }
+    if (http2Options) {
       req = client.request(headers);
       uponResponse(req);
     } else {
@@ -128,7 +158,7 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
       }
     }
     req.once('error',function(er){
-      return cb('ERROR_WHILE_REQUEST:'+(er.message||er));
+      return cb(er, 'ERROR_WHILE_REQUEST');
     });
     if (mo !== undefined) {
       if (isObject(mo.formData)) {
@@ -141,7 +171,7 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
       options.payloadStream.pipe(req, { end: false });
       options.payloadStream.once('end', req.end.bind(req, '\r\n------'+mo.boundaryKey+'--\r\n'));
       options.payloadStream.once('error', function(er){
-        return cb('ERROR_WITH_FILE_STREAM:'+(er.message||er));
+        return cb(er, 'ERROR_WITH_FILE_STREAM');
       });
     } else if (payload !== undefined) {
       req.end(Buffer.from(payload));
