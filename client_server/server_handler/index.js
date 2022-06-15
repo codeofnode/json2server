@@ -1,4 +1,8 @@
 module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL_API) {
+  function IsValidPathKey(st){
+    return Boolean(!(/[^\-_A-Za-z0-9]/).test(st));
+  }
+
   var IS_ALPHA_NUM = GLOBAL_METHODS.isAlphaNum;
   var S_VARS = JSON.stringify(GLOBAL_VARS);
   var PARSEABLE = (GLOBAL_APP_CONFIG.autoparse !== false) ? ['POST', 'PUT', 'PATCH', 'DELETE'] : [];
@@ -139,7 +143,7 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
             if (vr) {
               ky = ky.substring(1);
             }
-            if (IS_ALPHA_NUM(ky)) {
+            if (IS_ALPHA_NUM(ky.charAt(0)) && IsValidPathKey(ky)) {
               if (vr) {
                 res['$'] = ky;
                 GLOBAL_METHODS.assign(ob[':' + ky], ob[ky]);
@@ -341,7 +345,9 @@ module.exports = function(GLOBAL_APP_CONFIG, GLOBAL_METHODS, GLOBAL_VARS, GLOBAL
           return af();
         }
       };
-      if (!(onceOrParsed(req, rvars, (ml && ml.once), afterFrom))) {
+      if (method === false && curr === false) {
+        return next('Request could not be parsed. Special characters in request path are not allowed.', 400);
+      } else if (!(onceOrParsed(req, rvars, (ml && ml.once), afterFrom))) {
         return afterFrom();
       }
     };
