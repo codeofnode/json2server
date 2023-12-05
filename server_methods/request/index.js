@@ -52,6 +52,7 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
     }
     var contFound = false, contLenFound = false, obj = urlp.parse(url), client;
     obj.method = method;
+    obj.timeout = options.timeout || 300000;
     if(typeof headers !== 'object' || headers === null){
       headers = {};
     }
@@ -148,14 +149,20 @@ module.exports = function( GLOBAL_APP_CONFIG,GLOBAL_METHODS){
         console.log('REQ:', method, url);
       }
     }
+    function timeoutRespond(req) {
+      req.destroy();
+      cb('TIMEOUT', 'ERROR_WHILE_REQUEST');
+    }
     if (http2Options) {
       req = client.request(headers);
+      client.setTimeout(obj.timeout, timeoutRespond.bind(null, req));
       uponResponse(req);
     } else {
       req = (obj.protocol === 'https:' ? https : http).request(obj, uponResponse);
       for (var hdrKey in headers) {
         req.setHeader(hdrKey, headers[hdrKey]);
       }
+      req.on('timeout', timeoutRespond.bind(null, req));
     }
     req.once('error',function(er){
       return cb(er, 'ERROR_WHILE_REQUEST');
